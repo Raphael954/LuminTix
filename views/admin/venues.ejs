@@ -1,0 +1,86 @@
+<section class="admin-shell">
+  <div class="container">
+    <div class="admin-heading">
+      <div>
+        <span class="eyebrow">Admin</span>
+        <h1>Venues</h1>
+      </div>
+    </div>
+
+    <div class="admin-tabs">
+      <a href="/admin">Overview</a>
+      <a href="/admin/events">Events</a>
+      <a href="/admin/categories">Categories</a>
+      <a class="active" href="/admin/venues">Venues</a>
+      <a href="/admin/requests">Requests</a>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <div class="admin-panel">
+          <h2><%= venue.id ? 'Edit venue' : 'New venue' %></h2>
+          <form method="post" action="<%= venue.id ? `/admin/venues/${venue.id}` : '/admin/venues' %>">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <label class="form-label" for="name">Name</label>
+            <input class="form-control mb-3" id="name" name="name" value="<%= venue.name || '' %>" required>
+            <label class="form-label" for="slug">Slug</label>
+            <input class="form-control mb-3" id="slug" name="slug" value="<%= venue.slug || '' %>">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label" for="city">City</label>
+                <input class="form-control mb-3" id="city" name="city" value="<%= venue.city || '' %>" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="state">State</label>
+                <input class="form-control mb-3" id="state" name="state" value="<%= venue.state || '' %>">
+              </div>
+            </div>
+            <label class="form-label" for="country">Country</label>
+            <input class="form-control mb-3" id="country" name="country" value="<%= venue.country || 'Nigeria' %>">
+            <label class="form-label" for="address">Address</label>
+            <input class="form-control mb-3" id="address" name="address" value="<%= venue.address || '' %>">
+            <label class="form-label" for="description">Description</label>
+            <textarea class="form-control mb-3" id="description" name="description" rows="3"><%= venue.description || '' %></textarea>
+            <label class="form-label" for="image_url">Image URL</label>
+            <input class="form-control mb-3" id="image_url" name="image_url" value="<%= venue.image_url || '' %>">
+            <button class="btn btn-accent" type="submit">
+              <i data-lucide="save"></i>
+              <span>Save venue</span>
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <div class="admin-panel">
+          <div class="table-responsive">
+            <table class="table admin-table align-middle">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>City</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% venues.forEach((item) => { %>
+                  <tr>
+                    <td><strong><%= item.name %></strong><br><span><%= item.address %></span></td>
+                    <td><%= item.city %></td>
+                    <td class="text-end">
+                      <a class="btn btn-sm btn-outline-dark" href="/venues/<%= item.slug %>" target="_blank">View</a>
+                      <a class="btn btn-sm btn-dark" href="/admin/venues/<%= item.id %>/edit">Edit</a>
+                      <form method="post" action="/admin/venues/<%= item.id %>/delete" class="d-inline">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

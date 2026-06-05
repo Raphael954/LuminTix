@@ -1,0 +1,77 @@
+<section class="admin-shell">
+  <div class="container">
+    <div class="admin-heading">
+      <div>
+        <span class="eyebrow">Admin</span>
+        <h1>Categories</h1>
+      </div>
+    </div>
+
+    <div class="admin-tabs">
+      <a href="/admin">Overview</a>
+      <a href="/admin/events">Events</a>
+      <a class="active" href="/admin/categories">Categories</a>
+      <a href="/admin/venues">Venues</a>
+      <a href="/admin/requests">Requests</a>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <div class="admin-panel">
+          <h2><%= category.id ? 'Edit category' : 'New category' %></h2>
+          <form method="post" action="<%= category.id ? `/admin/categories/${category.id}` : '/admin/categories' %>">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <label class="form-label" for="name">Name</label>
+            <input class="form-control mb-3" id="name" name="name" value="<%= category.name || '' %>" required>
+            <label class="form-label" for="slug">Slug</label>
+            <input class="form-control mb-3" id="slug" name="slug" value="<%= category.slug || '' %>">
+            <label class="form-label" for="description">Description</label>
+            <textarea class="form-control mb-3" id="description" name="description" rows="3"><%= category.description || '' %></textarea>
+            <label class="form-label" for="accent_color">Accent color</label>
+            <input class="form-control form-control-color mb-3" id="accent_color" name="accent_color" type="color" value="<%= category.accent_color || '#0db39e' %>">
+            <label class="form-label" for="icon">Lucide icon</label>
+            <input class="form-control mb-3" id="icon" name="icon" value="<%= category.icon || 'ticket' %>">
+            <label class="form-label" for="image_url">Image URL</label>
+            <input class="form-control mb-3" id="image_url" name="image_url" value="<%= category.image_url || '' %>">
+            <label class="form-label" for="sort_order">Sort order</label>
+            <input class="form-control mb-3" id="sort_order" name="sort_order" type="number" value="<%= category.sort_order || categories.length + 1 %>">
+            <button class="btn btn-accent" type="submit">
+              <i data-lucide="save"></i>
+              <span>Save category</span>
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <div class="admin-panel">
+          <div class="table-responsive">
+            <table class="table admin-table align-middle">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Slug</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% categories.forEach((item) => { %>
+                  <tr>
+                    <td><strong><%= item.name %></strong><br><span><%= item.description %></span></td>
+                    <td><%= item.slug %></td>
+                    <td class="text-end">
+                      <a class="btn btn-sm btn-outline-dark" href="/admin/categories/<%= item.id %>/edit">Edit</a>
+                      <form method="post" action="/admin/categories/<%= item.id %>/delete" class="d-inline">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,89 @@
+<section class="page-hero compact">
+  <div class="container">
+    <span class="eyebrow"><%= typeof eyebrow !== 'undefined' ? eyebrow : 'Discovery' %></span>
+    <h1><%= category ? category.name : 'Explore events' %></h1>
+    <p><%= category ? category.description : 'Search across music, movies, sports, concerts, and nightlife.' %></p>
+  </div>
+</section>
+
+<section class="section-band light">
+  <div class="container">
+    <form class="filter-panel" action="/events" method="get" data-aos="fade-up">
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-4">
+          <label class="form-label" for="q">Keyword</label>
+          <input id="q" class="form-control" name="q" value="<%= filters.q || '' %>" placeholder="Event, artist, team, venue">
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <label class="form-label" for="category">Category</label>
+          <select id="category" class="form-select" name="category">
+            <option value="">All</option>
+            <% categories.forEach((item) => { %>
+              <option value="<%= item.slug %>" <%= filters.category === item.slug ? 'selected' : '' %>><%= item.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <label class="form-label" for="city">City</label>
+          <select id="city" class="form-select" name="city">
+            <option value="">Any</option>
+            <% cities.forEach((city) => { %>
+              <option value="<%= city %>" <%= filters.city === city ? 'selected' : '' %>><%= city %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <label class="form-label" for="date">Date</label>
+          <select id="date" class="form-select" name="date">
+            <option value="">Any time</option>
+            <option value="today" <%= filters.date === 'today' ? 'selected' : '' %>>Today</option>
+            <option value="week" <%= filters.date === 'week' ? 'selected' : '' %>>This week</option>
+            <option value="month" <%= filters.date === 'month' ? 'selected' : '' %>>This month</option>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <button class="btn btn-dark w-100" type="submit">
+            <i data-lucide="sliders-horizontal"></i>
+            <span>Apply</span>
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div class="results-heading">
+      <h2><%= events.length %> local event<%= events.length === 1 ? '' : 's' %></h2>
+      <a href="/events" class="link-clean">Clear filters</a>
+    </div>
+
+    <% if (events.length) { %>
+      <div class="event-grid">
+        <% events.forEach((event) => { %>
+          <%- include('../partials/event-card', { event }) %>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="empty-state">
+        <i data-lucide="calendar-x"></i>
+        <h2>No matching events</h2>
+        <p>Try a broader keyword, another city, or a different date window.</p>
+        <a class="btn btn-accent" href="/events">Reset search</a>
+      </div>
+    <% } %>
+
+    <% if (externalEvents && externalEvents.length) { %>
+      <div class="partner-results">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Partner discovery</span>
+            <h2>External events</h2>
+          </div>
+        </div>
+        <div class="event-grid">
+          <% externalEvents.forEach((event) => { %>
+            <%- include('../partials/event-card', { event }) %>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</section>

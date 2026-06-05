@@ -1,0 +1,92 @@
+<section class="event-hero" style="--hero-image: url('<%= event.hero_image_url || event.image_url %>')">
+  <div class="container">
+    <div class="event-hero-content" data-aos="fade-up">
+      <a class="crumb" href="/category/<%= event.category_slug %>"><i data-lucide="<%= event.category_icon || 'ticket' %>"></i><%= event.category_name %></a>
+      <h1><%= event.title %></h1>
+      <div class="event-hero-meta">
+        <span><i data-lucide="calendar"></i><%= helpers.formatDateTime(event.starts_at) %></span>
+        <span><i data-lucide="map-pin"></i><%= event.venue_name %>, <%= event.city %></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-band light event-detail-section">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="detail-panel" data-aos="fade-up">
+          <div class="detail-panel-heading">
+            <span class="status-pill status-<%= event.availability_status %>"><%= helpers.statusLabel(event.availability_status) %></span>
+            <% (event.tags || []).forEach((tag) => { %>
+              <span class="soft-tag"><%= tag %></span>
+            <% }) %>
+          </div>
+          <h2>About this event</h2>
+          <p class="lead"><%= event.summary %></p>
+          <p><%= event.description %></p>
+        </div>
+
+        <div class="detail-panel" data-aos="fade-up">
+          <h2>Ticket preferences</h2>
+          <p class="muted-copy">Exact stock is handled by the admin team. Choose a preference and open a request conversation on WhatsApp.</p>
+          <div class="ticket-list">
+            <% ticketOptions.forEach((ticket) => { %>
+              <div class="ticket-row">
+                <div>
+                  <h3><%= ticket.name %></h3>
+                  <p><%= ticket.description %></p>
+                  <span><%= ticket.availability_label %></span>
+                </div>
+                <div class="ticket-row-action">
+                  <strong><%= ticket.price_label %></strong>
+                  <% if (['sold_out', 'cancelled'].includes(event.availability_status) || event.status === 'cancelled') { %>
+                    <button class="btn btn-secondary" disabled>Unavailable</button>
+                  <% } else { %>
+                    <a class="btn btn-accent" href="/request/<%= event.id %>?ticket=<%= ticket.id %>">
+                      <i data-lucide="message-circle"></i>
+                      <span>Request</span>
+                    </a>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+      <aside class="col-lg-4">
+        <div class="sticky-summary" data-aos="fade-up">
+          <img src="<%= event.image_url %>" alt="<%= event.title %>">
+          <div class="summary-body">
+            <h2>Event summary</h2>
+            <p><i data-lucide="calendar"></i><%= helpers.formatDateTime(event.starts_at) %></p>
+            <p><i data-lucide="map-pin"></i><%= event.venue_name %>, <%= event.city %></p>
+            <p><i data-lucide="ticket"></i><%= helpers.statusLabel(event.availability_status) %></p>
+            <a class="btn btn-dark w-100" href="/request/<%= event.id %>">
+              <i data-lucide="send"></i>
+              <span>Request tickets</span>
+            </a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<% if (relatedEvents.length) { %>
+  <section class="section-band">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">More like this</span>
+          <h2>Related events</h2>
+        </div>
+      </div>
+      <div class="event-grid">
+        <% relatedEvents.forEach((event) => { %>
+          <%- include('../partials/event-card', { event }) %>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+<% } %>

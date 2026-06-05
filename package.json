@@ -1,0 +1,32 @@
+{
+  "name": "lumintix",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Modern entertainment discovery and WhatsApp booking platform.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "check": "node scripts/check.js",
+    "db:setup": "node scripts/setup-db.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^17.2.3",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "express-ejs-layouts": "^2.5.1",
+    "express-rate-limit": "^8.5.2",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "method-override": "^3.0.0",
+    "morgan": "^1.10.1",
+    "pg": "^8.16.3",
+    "slugify": "^1.6.6"
+  }
+}

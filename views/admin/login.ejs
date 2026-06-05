@@ -1,0 +1,25 @@
+<section class="admin-login">
+  <div class="login-panel" data-aos="fade-up">
+    <div class="brand-mark justify-content-center">
+      <span class="brand-icon"><i data-lucide="ticket"></i></span>
+      <span><%= brandName %></span>
+    </div>
+    <h1>Admin sign in</h1>
+    <p>Manage events, venues, ticket preferences, and booking requests.</p>
+    <form method="post" action="/admin/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="mb-3">
+        <label class="form-label" for="email">Email</label>
+        <input class="form-control" id="email" name="email" type="email" value="<%= adminEmailHint %>" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-control" id="password" name="password" type="password" placeholder="admin123" required>
+      </div>
+      <button class="btn btn-accent w-100" type="submit">
+        <i data-lucide="log-in"></i>
+        <span>Sign in</span>
+      </button>
+    </form>
+  </div>
+</section>

@@ -1,0 +1,34 @@
+<section class="page-hero venue-hero" style="--venue-image:url('<%= venue.image_url %>')">
+  <div class="container">
+    <span class="eyebrow">Venue</span>
+    <h1><%= venue.name %></h1>
+    <p><%= venue.address %>, <%= venue.city %></p>
+  </div>
+</section>
+
+<section class="section-band light">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="detail-panel" data-aos="fade-up">
+          <h2>About the venue</h2>
+          <p><%= venue.description %></p>
+          <p class="muted-copy"><i data-lucide="map-pin"></i> <%= venue.city %>, <%= venue.state %>, <%= venue.country %></p>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div class="section-heading tight">
+          <div>
+            <span class="eyebrow">Upcoming</span>
+            <h2>Events at <%= venue.name %></h2>
+          </div>
+        </div>
+        <div class="event-grid two">
+          <% events.forEach((event) => { %>
+            <%- include('partials/event-card', { event }) %>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

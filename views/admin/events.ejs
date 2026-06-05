@@ -1,0 +1,54 @@
+<section class="admin-shell">
+  <div class="container">
+    <div class="admin-heading">
+      <div>
+        <span class="eyebrow">Admin</span>
+        <h1>Events</h1>
+      </div>
+      <a class="btn btn-accent" href="/admin/events/new">
+        <i data-lucide="plus"></i>
+        <span>New event</span>
+      </a>
+    </div>
+
+    <div class="admin-tabs">
+      <a href="/admin">Overview</a>
+      <a class="active" href="/admin/events">Events</a>
+      <a href="/admin/categories">Categories</a>
+      <a href="/admin/venues">Venues</a>
+      <a href="/admin/requests">Requests</a>
+    </div>
+
+    <div class="admin-panel">
+      <div class="table-responsive">
+        <table class="table admin-table align-middle">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Category</th>
+              <th>Venue</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% events.forEach((event) => { %>
+              <tr>
+                <td><strong><%= event.title %></strong><br><span><%= event.summary %></span></td>
+                <td><%= event.category_name %></td>
+                <td><%= event.venue_name %></td>
+                <td><%= helpers.formatDate(event.starts_at) %></td>
+                <td><span class="status-pill status-<%= event.availability_status %>"><%= helpers.statusLabel(event.availability_status) %></span></td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-dark" href="/events/<%= event.slug %>" target="_blank">View</a>
+                  <a class="btn btn-sm btn-dark" href="/admin/events/<%= event.id %>/edit">Edit</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

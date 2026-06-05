@@ -1,0 +1,144 @@
+<section class="hero-discovery">
+  <div class="hero-media" aria-hidden="true"></div>
+  <div class="container hero-content">
+    <div class="row align-items-end g-4">
+      <div class="col-lg-7" data-aos="fade-up">
+        <span class="eyebrow">Curated entertainment requests</span>
+        <h1>Find the right night out, then request tickets in one move.</h1>
+        <p>Music, movies, sports, concerts, and nightlife with a more personal booking flow.</p>
+      </div>
+      <div class="col-lg-5" data-aos="fade-up" data-aos-delay="120">
+        <form class="hero-search" action="/search" method="get">
+          <label for="hero-search" class="form-label">Search events</label>
+          <div class="input-group">
+            <span class="input-group-text"><i data-lucide="search"></i></span>
+            <input id="hero-search" class="form-control" type="search" name="q" placeholder="Artist, movie, team, venue">
+            <button class="btn btn-accent" type="submit">Search</button>
+          </div>
+          <div class="quick-links">
+            <% categories.slice(0, 5).forEach((category) => { %>
+              <a href="/category/<%= category.slug %>"><%= category.name %></a>
+            <% }) %>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-band">
+  <div class="container">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">Browse by mood</span>
+        <h2>Entertainment lanes</h2>
+      </div>
+      <a href="/events" class="btn btn-outline-dark">
+        <i data-lucide="arrow-right"></i>
+        <span>All events</span>
+      </a>
+    </div>
+    <div class="category-grid">
+      <% categories.forEach((category, index) => { %>
+        <a class="category-tile" href="/category/<%= category.slug %>" data-aos="fade-up" data-aos-delay="<%= index * 60 %>">
+          <img src="<%= category.image_url %>" alt="<%= category.name %>">
+          <span class="category-icon" style="--accent:<%= category.accent_color %>"><i data-lucide="<%= category.icon %>"></i></span>
+          <div>
+            <h3><%= category.name %></h3>
+            <p><%= category.description %></p>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="section-band light">
+  <div class="container">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">Featured</span>
+        <h2>Top requests this season</h2>
+      </div>
+      <form class="compact-search" action="/events" method="get">
+        <input class="form-control" name="city" placeholder="City">
+        <button class="btn btn-dark" type="submit">
+          <i data-lucide="map-pin"></i>
+          <span>Filter</span>
+        </button>
+      </form>
+    </div>
+    <div class="event-grid">
+      <% featuredEvents.forEach((event) => { %>
+        <%- include('partials/event-card', { event }) %>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="section-band split-feature">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-5" data-aos="fade-right">
+        <span class="eyebrow">Personal booking</span>
+        <h2>Checkout becomes a conversation.</h2>
+        <p>Customers choose an event, ticket preference, and quantity. The platform saves the request and opens WhatsApp with every detail already written.</p>
+        <a href="/events" class="btn btn-accent">
+          <i data-lucide="send"></i>
+          <span>Start a request</span>
+        </a>
+      </div>
+      <div class="col-lg-7" data-aos="fade-left">
+        <div class="request-preview">
+          <div class="request-preview-top">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <p>Hello LuminTix, I want to request tickets.</p>
+          <p><strong>Event:</strong> Afrobeats Under The Stars</p>
+          <p><strong>Ticket:</strong> VIP Table</p>
+          <p><strong>Quantity:</strong> 4</p>
+          <p><strong>Customer:</strong> Your guest</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-band light">
+  <div class="container">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">Cities</span>
+        <h2>Explore by location</h2>
+      </div>
+    </div>
+    <div class="city-row">
+      <% cities.forEach((city) => { %>
+        <a href="/events?city=<%= encodeURIComponent(city) %>">
+          <i data-lucide="building-2"></i>
+          <span><%= city %></span>
+        </a>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<% if (externalEvents.length) { %>
+  <section class="section-band">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">Hybrid discovery</span>
+          <h2>Partner events</h2>
+        </div>
+      </div>
+      <div class="event-grid">
+        <% externalEvents.forEach((event) => { %>
+          <%- include('partials/event-card', { event }) %>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+<% } %>

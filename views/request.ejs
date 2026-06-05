@@ -1,0 +1,70 @@
+<section class="page-hero compact">
+  <div class="container">
+    <span class="eyebrow">WhatsApp request</span>
+    <h1><%= event.title %></h1>
+    <p><%= helpers.formatDateTime(event.starts_at) %> at <%= event.venue_name %>, <%= event.city %></p>
+  </div>
+</section>
+
+<section class="section-band light">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <article class="request-event-card" data-aos="fade-up">
+          <img src="<%= event.image_url %>" alt="<%= event.title %>">
+          <div>
+            <span class="status-pill status-<%= event.availability_status %>"><%= helpers.statusLabel(event.availability_status) %></span>
+            <h2><%= event.title %></h2>
+            <p><%= event.summary %></p>
+          </div>
+        </article>
+      </div>
+      <div class="col-lg-7">
+        <form class="request-form" method="post" action="/api/booking-requests" data-aos="fade-up" data-aos-delay="100">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="event_id" value="<%= event.id %>">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label" for="ticket_option_id">Ticket preference</label>
+              <select class="form-select" id="ticket_option_id" name="ticket_option_id">
+                <% ticketOptions.forEach((ticket) => { %>
+                  <option value="<%= ticket.id %>" <%= String(selectedTicketId) === String(ticket.id) ? 'selected' : '' %>><%= ticket.name %> - <%= ticket.price_label %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="quantity">Quantity</label>
+              <input class="form-control" id="quantity" name="quantity" type="number" min="1" max="20" value="1" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="customer_name">Full name</label>
+              <input class="form-control" id="customer_name" name="customer_name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="customer_phone">Phone</label>
+              <input class="form-control" id="customer_phone" name="customer_phone" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="customer_email">Email</label>
+              <input class="form-control" id="customer_email" name="customer_email" type="email">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="note">Note</label>
+              <input class="form-control" id="note" name="note" placeholder="Table, section, timing, group request">
+            </div>
+            <div class="col-12">
+              <button class="btn btn-accent btn-lg" type="submit">
+                <i data-lucide="message-circle"></i>
+                <span>Open WhatsApp request</span>
+              </button>
+              <a class="btn btn-outline-dark btn-lg" href="/events/<%= event.slug %>">
+                <i data-lucide="arrow-left"></i>
+                <span>Back</span>
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
