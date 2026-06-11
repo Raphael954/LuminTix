@@ -22,3 +22,8 @@ LuminTix running at http://localhost:3000 using Neon/Postgres.
 [0mGET /css/styles.css [36m304[0m 0.878 ms - -[0m
 [0mGET /images/lumintix-logo-lockup.png [36m304[0m 0.758 ms - -[0m
 [0mGET /js/app.js [36m304[0m 2.064 ms - -[0m
+[0mGET / [36m304[0m 3267.961 ms - -[0m
+[0mGET /css/styles.css [36m304[0m 2.268 ms - -[0m
+[0mGET /images/lumintix-logo-lockup.png [36m304[0m 3.682 ms - -[0m
+[0mGET /js/app.js [36m304[0m 0.978 ms - -[0m
+[0mGET /images/favicon.png [36m304[0m 1.640 ms - -[0m
