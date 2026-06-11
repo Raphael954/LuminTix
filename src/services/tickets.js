@@ -7,6 +7,8 @@ import { PDFDocument } from "pdf-lib";
 import QRCode from "qrcode";
 import sharp from "sharp";
 
+import { getAppUrl } from "../config.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const logoPath = path.join(__dirname, "..", "..", "public", "images", "lumintix-logo-lockup.png");
 
@@ -54,7 +56,7 @@ function textLines(lines, x, y, size = 34) {
 
 async function renderTicketPng(order, ticket) {
   const event = order.event_snapshot;
-  const validationUrl = `${process.env.APP_URL}/tickets/check-in/${ticket.validation_token}`;
+  const validationUrl = `${getAppUrl()}/tickets/check-in/${ticket.validation_token}`;
   const qr = await QRCode.toDataURL(validationUrl, { width: 360, margin: 1, errorCorrectionLevel: "H" });
   const logo = `data:image/png;base64,${(await fs.readFile(logoPath)).toString("base64")}`;
   const location = [event.venue_name, event.city].filter(Boolean).join(", ") || "Location to be announced";

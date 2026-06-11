@@ -12,36 +12,46 @@ function readInt(name, fallback, { min = Number.MIN_SAFE_INTEGER, max = Number.M
   return Math.min(max, Math.max(min, value));
 }
 
-function requireEnv(name) {
-  if (!process.env[name]) {
-    throw new Error(`${name} is required when NODE_ENV=production.`);
-  }
+function normalizeAppUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`);
+  return url.origin;
 }
 
-function validateConfig() {
-  if (!isProduction) return;
+function getAppUrl({ port = Number(process.env.PORT || 3000) } = {}) {
+  if (process.env.APP_URL) return normalizeAppUrl(process.env.APP_URL);
 
-  requireEnv("DATABASE_URL");
-  requireEnv("SESSION_SECRET");
-  requireEnv("APP_URL");
-  requireEnv("TICKETMASTER_API_KEY");
-  requireEnv("PAYSTACK_SECRET_KEY");
-  requireEnv("RESEND_API_KEY");
-  requireEnv("EMAIL_FROM");
-  requireEnv("ADMIN_EMAIL");
-  requireEnv("ADMIN_PASSWORD");
+  if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return normalizeAppUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+  }
+
+  if (process.env.VERCEL_URL) return normalizeAppUrl(process.env.VERCEL_URL);
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return normalizeAppUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+
+  return `http://localhost:${port}`;
+}
+
+function validateConfig({ production = isProduction } = {}) {
+  if (!production) return;
+
+  const required = ["DATABASE_URL", "SESSION_SECRET", "ADMIN_EMAIL", "ADMIN_PASSWORD"];
+  const missing = required.filter((name) => !process.env[name]);
+  if (missing.length) {
+    throw new Error(`Missing required production configuration: ${missing.join(", ")}.`);
+  }
 
   if (process.env.SESSION_SECRET.length < 32) {
     throw new Error("SESSION_SECRET must be at least 32 characters in production.");
   }
 
   if (process.env.ADMIN_PASSWORD === "admin123") {
-    throw new Error("ADMIN_PASSWORD must be changed before production database setup.");
+    throw new Error("ADMIN_PASSWORD must be changed before running in production.");
   }
 
-  if (!process.env.APP_URL.startsWith("https://")) {
-    throw new Error("APP_URL must use HTTPS in production.");
+  if (!getAppUrl().startsWith("https://")) {
+    throw new Error("APP_URL or the resolved Vercel deployment URL must use HTTPS in production.");
   }
 }
 
-export { isProduction, readBool, readInt, validateConfig };
+export { getAppUrl, isProduction, normalizeAppUrl, readBool, readInt, validateConfig };

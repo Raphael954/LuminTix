@@ -10,7 +10,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import methodOverride from "method-override";
 
-import { isProduction, readBool, validateConfig } from "./config.js";
+import { getAppUrl, isProduction, readBool, validateConfig } from "./config.js";
 import { getPool, isConfigured as isDatabaseConfigured, query } from "./db.js";
 import { csrfProtection } from "./middleware/security.js";
 import createCommerceStore from "./commerce-store.js";
@@ -24,7 +24,6 @@ import { createTicketmasterService } from "./services/ticketmaster.js";
 import viewHelpers from "./utils/view-helpers.js";
 
 const port = Number(process.env.PORT || 3000);
-process.env.APP_URL ||= `http://localhost:${port}`;
 validateConfig();
 
 const app = express();
@@ -170,6 +169,6 @@ app.use((error, req, res, next) => {
 
 app.listen(port, () => {
   const mode = store.isDatabaseConfigured() ? "Neon/Postgres" : "seeded local data";
-  console.log(`LuminTix running at http://localhost:${port} using ${mode}.`);
+  console.log(`LuminTix running at http://localhost:${port} using ${mode}. Public URL: ${getAppUrl({ port })}.`);
   if (isDatabaseConfigured()) startSchedulers({ commerceStore, emailService });
 });

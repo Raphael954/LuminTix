@@ -8,8 +8,11 @@ import { fileURLToPath } from "node:url";
 import ejs from "ejs";
 import JSZip from "jszip";
 
+import { getMigrationFiles } from "../scripts/migrations.js";
+import { getAppUrl, normalizeAppUrl, validateConfig } from "../src/config.js";
 import { connectionStringForPool } from "../src/db.js";
 import createStore from "../src/store.js";
+import { BREVO_EMAIL_URL, createEmailService } from "../src/services/email.js";
 import { createPaystackService } from "../src/services/paystack.js";
 import { createTicketmasterService, mapTicketmasterEvent, parseRetryAfter, queryKey } from "../src/services/ticketmaster.js";
 import { buildTicketZip } from "../src/services/tickets.js";
@@ -93,16 +96,17 @@ test("seeded local events expose USD starting prices and cards display price onl
 });
 
 test("ordered migrations include the Ticketmaster commerce schema", () => {
-  const migrations = fs
-    .readdirSync(path.join(projectRoot, "migrations"))
-    .filter((file) => file.endsWith(".sql"))
-    .sort();
-  assert.deepEqual(migrations, ["001_init.sql", "002_ticketmaster_payments.sql"]);
+  const migrations = getMigrationFiles();
+  assert.deepEqual(migrations, ["001_init.sql", "002_ticketmaster_payments.sql", "003_brevo_email.sql"]);
 
   const commerceMigration = fs.readFileSync(path.join(projectRoot, "migrations", "002_ticketmaster_payments.sql"), "utf8");
   for (const table of ["external_event_prices", "orders", "tickets", "payment_webhook_events", "email_deliveries"]) {
     assert.match(commerceMigration, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
   }
+
+  const brevoMigration = fs.readFileSync(path.join(projectRoot, "migrations", "003_brevo_email.sql"), "utf8");
+  assert.match(brevoMigration, /WHERE provider = 'resend'\s+AND status <> 'sent'/);
+  assert.match(brevoMigration, /ALTER COLUMN provider SET DEFAULT 'brevo'/);
 });
 
 test("Ticketmaster query hashing and Retry-After parsing are stable", () => {
@@ -152,6 +156,77 @@ test("remote database connections enforce verify-full TLS", () => {
   assert.equal(connectionStringForPool("postgresql://user:pass@localhost/db"), "postgresql://user:pass@localhost/db");
 });
 
+test("app URL resolution follows explicit, Vercel production, preview, and local contexts", () => {
+  const names = ["APP_URL", "VERCEL_ENV", "VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"];
+  const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  try {
+    process.env.APP_URL = "https://custom.example/some-path/";
+    process.env.VERCEL_ENV = "preview";
+    process.env.VERCEL_URL = "preview-lumintix.vercel.app";
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = "lumintix.vercel.app";
+    assert.equal(getAppUrl(), "https://custom.example");
+    assert.equal(normalizeAppUrl("lumintix.vercel.app"), "https://lumintix.vercel.app");
+
+    delete process.env.APP_URL;
+    process.env.VERCEL_ENV = "production";
+    assert.equal(getAppUrl(), "https://lumintix.vercel.app");
+
+    process.env.VERCEL_ENV = "preview";
+    assert.equal(getAppUrl(), "https://preview-lumintix.vercel.app");
+
+    delete process.env.VERCEL_URL;
+    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    assert.equal(getAppUrl({ port: 4321 }), "http://localhost:4321");
+  } finally {
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
+});
+
+test("production configuration requires core settings but allows disabled providers", () => {
+  const names = [
+    "APP_URL",
+    "DATABASE_URL",
+    "SESSION_SECRET",
+    "ADMIN_EMAIL",
+    "ADMIN_PASSWORD",
+    "TICKETMASTER_API_KEY",
+    "PAYSTACK_SECRET_KEY",
+    "BREVO_API_KEY",
+    "BREVO_SENDER_NAME",
+    "BREVO_SENDER_EMAIL"
+  ];
+  const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  try {
+    process.env.APP_URL = "https://tickets.example";
+    process.env.DATABASE_URL = "postgresql://user:pass@example.com/database";
+    process.env.SESSION_SECRET = "a".repeat(32);
+    process.env.ADMIN_EMAIL = "admin@example.com";
+    process.env.ADMIN_PASSWORD = "secure-admin-password";
+    delete process.env.TICKETMASTER_API_KEY;
+    delete process.env.PAYSTACK_SECRET_KEY;
+    delete process.env.BREVO_API_KEY;
+    delete process.env.BREVO_SENDER_NAME;
+    delete process.env.BREVO_SENDER_EMAIL;
+
+    assert.doesNotThrow(() => validateConfig({ production: true }));
+
+    delete process.env.DATABASE_URL;
+    delete process.env.ADMIN_EMAIL;
+    assert.throws(
+      () => validateConfig({ production: true }),
+      /Missing required production configuration: DATABASE_URL, ADMIN_EMAIL/
+    );
+  } finally {
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
+});
+
 test("Paystack initializes USD card-only checkout and validates exact payment", async () => {
   process.env.PAYSTACK_SECRET_KEY = "sk_test_value";
   process.env.APP_URL = "https://tickets.example";
@@ -176,6 +251,7 @@ test("Paystack initializes USD card-only checkout and validates exact payment", 
   assert.equal(requestBody.currency, "USD");
   assert.deepEqual(requestBody.channels, ["card"]);
   assert.equal(requestBody.amount, "200000");
+  assert.equal(requestBody.callback_url, "https://tickets.example/payments/paystack/callback");
   assert.equal(paystack.assertVerifiedPayment(order, { reference: "PAY-1", status: "success", currency: "USD", amount: 200000 }), true);
   assert.throws(() => paystack.assertVerifiedPayment(order, { reference: "PAY-1", status: "success", currency: "EUR", amount: 200000 }));
 });
@@ -185,6 +261,143 @@ test("Paystack webhook signatures use the configured secret", () => {
   const raw = Buffer.from('{"event":"charge.success"}');
   const signature = crypto.createHmac("sha512", process.env.PAYSTACK_SECRET_KEY).update(raw).digest("hex");
   assert.equal(createPaystackService().verifyWebhookSignature(raw, signature), true);
+});
+
+test("Brevo sends ticket ZIPs from an unmonitored sender without replyTo", async () => {
+  process.env.APP_URL = "https://tickets.example";
+  process.env.BREVO_API_KEY = "brevo-test-key";
+  process.env.BREVO_SENDER_NAME = "LuminTix Tickets (No Reply)";
+  process.env.BREVO_SENDER_EMAIL = "no-reply@example.com";
+  let request;
+  let deliveryUpdate;
+  const service = createEmailService({
+    commerceStore: {
+      async updateEmailDelivery(id, payload) {
+        deliveryUpdate = { id, ...payload };
+      }
+    },
+    buildZip: async () => Buffer.from("ticket-zip"),
+    fetchImpl: async (url, options) => {
+      request = { url, options, body: JSON.parse(options.body) };
+      return response({ messageId: "<brevo-message-id>" }, 201);
+    }
+  });
+  const order = {
+    public_token: "public-token",
+    order_code: "LT-BREVO",
+    customer_name: "Ada Guest",
+    customer_email: "ada@example.com",
+    quantity: 2,
+    event_snapshot: { title: "Midnight Live" }
+  };
+
+  await service.sendOrderTickets(order, { id: 42 });
+
+  assert.equal(service.enabled, true);
+  assert.equal(request.url, BREVO_EMAIL_URL);
+  assert.equal(request.options.headers["api-key"], "brevo-test-key");
+  assert.deepEqual(request.body.sender, {
+    name: "LuminTix Tickets (No Reply)",
+    email: "no-reply@example.com"
+  });
+  assert.deepEqual(request.body.to, [{ name: "Ada Guest", email: "ada@example.com" }]);
+  assert.equal(request.body.replyTo, undefined);
+  assert.match(request.body.htmlContent, /unmonitored mailbox/);
+  assert.match(request.body.textContent, /Replies are not read/);
+  assert.deepEqual(request.body.attachment, [
+    { name: "lumintix-LT-BREVO-tickets.zip", content: Buffer.from("ticket-zip").toString("base64") }
+  ]);
+  assert.deepEqual(deliveryUpdate, { id: 42, status: "sent", provider_id: "<brevo-message-id>" });
+});
+
+test("Brevo queue records API failures for later retry", async () => {
+  process.env.BREVO_API_KEY = "brevo-test-key";
+  process.env.BREVO_SENDER_EMAIL = "no-reply@example.com";
+  let deliveryUpdate;
+  const service = createEmailService({
+    commerceStore: {
+      async getPendingEmailDeliveries() {
+        return [{ id: 7, order_id: 9 }];
+      },
+      async getOrderWithTickets() {
+        return {
+          status: "paid",
+          public_token: "token",
+          order_code: "LT-FAIL",
+          customer_name: "Guest",
+          customer_email: "guest@example.com",
+          quantity: 1,
+          event_snapshot: { title: "Test Event" }
+        };
+      },
+      async updateEmailDelivery(id, payload) {
+        deliveryUpdate = { id, ...payload };
+      }
+    },
+    buildZip: async () => Buffer.from("zip"),
+    fetchImpl: async () => response({ message: "Too many requests" }, 429)
+  });
+
+  await service.processPending();
+
+  assert.equal(deliveryUpdate.id, 7);
+  assert.equal(deliveryUpdate.status, "failed");
+  assert.match(deliveryUpdate.last_error, /Brevo ticket delivery failed \(429\)/);
+});
+
+test("Brevo queue records network timeouts and never sends unpaid orders", async () => {
+  process.env.BREVO_API_KEY = "brevo-test-key";
+  process.env.BREVO_SENDER_EMAIL = "no-reply@example.com";
+  let fetchCalls = 0;
+  const updates = [];
+  const service = createEmailService({
+    commerceStore: {
+      async getPendingEmailDeliveries() {
+        return [
+          { id: 8, order_id: 10 },
+          { id: 9, order_id: 11 }
+        ];
+      },
+      async getOrderWithTickets(id) {
+        if (id === 10) return { status: "pending" };
+        return {
+          status: "paid",
+          public_token: "token",
+          order_code: "LT-TIMEOUT",
+          customer_name: "Guest",
+          customer_email: "guest@example.com",
+          quantity: 1,
+          event_snapshot: { title: "Test Event" }
+        };
+      },
+      async updateEmailDelivery(id, payload) {
+        updates.push({ id, ...payload });
+      }
+    },
+    buildZip: async () => Buffer.from("zip"),
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      throw new DOMException("The operation was aborted", "TimeoutError");
+    }
+  });
+
+  await service.processPending();
+
+  assert.equal(fetchCalls, 1);
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].id, 9);
+  assert.equal(updates[0].status, "failed");
+  assert.match(updates[0].last_error, /operation was aborted/);
+});
+
+test("Brevo email service is disabled without required credentials", () => {
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+  delete process.env.BREVO_API_KEY;
+  delete process.env.BREVO_SENDER_EMAIL;
+  assert.equal(createEmailService({ commerceStore: {} }).enabled, false);
+  process.env.BREVO_API_KEY = apiKey;
+  process.env.BREVO_SENDER_EMAIL = senderEmail;
 });
 
 test("ticket ZIP contains one unique PDF per purchased quantity", async () => {
