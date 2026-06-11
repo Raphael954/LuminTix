@@ -57,7 +57,26 @@ Set these separately in the Vercel project settings. Keep `.env` local and never
 
 ## Production Configuration
 
-Production requires `DATABASE_URL`, `SESSION_SECRET`, `TICKETMASTER_API_KEY`, `PAYSTACK_SECRET_KEY`, `BREVO_API_KEY`, `BREVO_SENDER_NAME`, `BREVO_SENDER_EMAIL`, and non-default admin credentials. It also requires either an HTTPS `APP_URL` override or Vercel's automatically exposed system URL variables.
+Production startup requires `DATABASE_URL`, `SESSION_SECRET`, non-default admin credentials, and either an HTTPS `APP_URL` override or Vercel's automatically exposed system URL variables.
+
+Provider credentials are optional at startup so one unavailable integration cannot take down the whole site:
+
+- Without `TICKETMASTER_API_KEY`, external Ticketmaster discovery is disabled.
+- Without `PAYSTACK_SECRET_KEY`, checkout shows its existing temporary-unavailable payment error.
+- Without `BREVO_API_KEY` and `BREVO_SENDER_EMAIL`, ticket email delivery is disabled while secure downloads remain available.
+
+Configure all provider credentials in Vercel before accepting real customer purchases.
+
+For a Vercel deployment, add at least these core variables in **Project Settings > Environment Variables** before redeploying:
+
+```env
+DATABASE_URL=
+SESSION_SECRET=
+ADMIN_EMAIL=
+ADMIN_PASSWORD=
+```
+
+`SESSION_SECRET` must be at least 32 characters and `ADMIN_PASSWORD` must not be `admin123`. Local `.env` values are ignored by Git and are not automatically copied to Vercel.
 
 Public links use this precedence:
 

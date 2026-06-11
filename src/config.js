@@ -12,12 +12,6 @@ function readInt(name, fallback, { min = Number.MIN_SAFE_INTEGER, max = Number.M
   return Math.min(max, Math.max(min, value));
 }
 
-function requireEnv(name) {
-  if (!process.env[name]) {
-    throw new Error(`${name} is required when NODE_ENV=production.`);
-  }
-}
-
 function normalizeAppUrl(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -38,25 +32,21 @@ function getAppUrl({ port = Number(process.env.PORT || 3000) } = {}) {
   return `http://localhost:${port}`;
 }
 
-function validateConfig() {
-  if (!isProduction) return;
+function validateConfig({ production = isProduction } = {}) {
+  if (!production) return;
 
-  requireEnv("DATABASE_URL");
-  requireEnv("SESSION_SECRET");
-  requireEnv("TICKETMASTER_API_KEY");
-  requireEnv("PAYSTACK_SECRET_KEY");
-  requireEnv("BREVO_API_KEY");
-  requireEnv("BREVO_SENDER_NAME");
-  requireEnv("BREVO_SENDER_EMAIL");
-  requireEnv("ADMIN_EMAIL");
-  requireEnv("ADMIN_PASSWORD");
+  const required = ["DATABASE_URL", "SESSION_SECRET", "ADMIN_EMAIL", "ADMIN_PASSWORD"];
+  const missing = required.filter((name) => !process.env[name]);
+  if (missing.length) {
+    throw new Error(`Missing required production configuration: ${missing.join(", ")}.`);
+  }
 
   if (process.env.SESSION_SECRET.length < 32) {
     throw new Error("SESSION_SECRET must be at least 32 characters in production.");
   }
 
   if (process.env.ADMIN_PASSWORD === "admin123") {
-    throw new Error("ADMIN_PASSWORD must be changed before production database setup.");
+    throw new Error("ADMIN_PASSWORD must be changed before running in production.");
   }
 
   if (!getAppUrl().startsWith("https://")) {

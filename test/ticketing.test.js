@@ -9,7 +9,7 @@ import ejs from "ejs";
 import JSZip from "jszip";
 
 import { getMigrationFiles } from "../scripts/migrations.js";
-import { getAppUrl, normalizeAppUrl } from "../src/config.js";
+import { getAppUrl, normalizeAppUrl, validateConfig } from "../src/config.js";
 import { connectionStringForPool } from "../src/db.js";
 import createStore from "../src/store.js";
 import { BREVO_EMAIL_URL, createEmailService } from "../src/services/email.js";
@@ -177,6 +177,48 @@ test("app URL resolution follows explicit, Vercel production, preview, and local
     delete process.env.VERCEL_URL;
     delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
     assert.equal(getAppUrl({ port: 4321 }), "http://localhost:4321");
+  } finally {
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
+});
+
+test("production configuration requires core settings but allows disabled providers", () => {
+  const names = [
+    "APP_URL",
+    "DATABASE_URL",
+    "SESSION_SECRET",
+    "ADMIN_EMAIL",
+    "ADMIN_PASSWORD",
+    "TICKETMASTER_API_KEY",
+    "PAYSTACK_SECRET_KEY",
+    "BREVO_API_KEY",
+    "BREVO_SENDER_NAME",
+    "BREVO_SENDER_EMAIL"
+  ];
+  const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  try {
+    process.env.APP_URL = "https://tickets.example";
+    process.env.DATABASE_URL = "postgresql://user:pass@example.com/database";
+    process.env.SESSION_SECRET = "a".repeat(32);
+    process.env.ADMIN_EMAIL = "admin@example.com";
+    process.env.ADMIN_PASSWORD = "secure-admin-password";
+    delete process.env.TICKETMASTER_API_KEY;
+    delete process.env.PAYSTACK_SECRET_KEY;
+    delete process.env.BREVO_API_KEY;
+    delete process.env.BREVO_SENDER_NAME;
+    delete process.env.BREVO_SENDER_EMAIL;
+
+    assert.doesNotThrow(() => validateConfig({ production: true }));
+
+    delete process.env.DATABASE_URL;
+    delete process.env.ADMIN_EMAIL;
+    assert.throws(
+      () => validateConfig({ production: true }),
+      /Missing required production configuration: DATABASE_URL, ADMIN_EMAIL/
+    );
   } finally {
     for (const name of names) {
       if (previous[name] === undefined) delete process.env[name];
