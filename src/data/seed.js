@@ -4,7 +4,7 @@ const categories = [
     name: "Music",
     slug: "music",
     description: "Live performances, album nights, listening rooms, and artist showcases.",
-    accent_color: "#0db39e",
+    accent_color: "#7928f5",
     icon: "music",
     image_url: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=900&q=80",
     sort_order: 1
@@ -14,7 +14,7 @@ const categories = [
     name: "Movies",
     slug: "movies",
     description: "Premieres, outdoor screenings, cinema clubs, and film festivals.",
-    accent_color: "#ff6b5f",
+    accent_color: "#315bff",
     icon: "clapperboard",
     image_url: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80",
     sort_order: 2
@@ -24,7 +24,7 @@ const categories = [
     name: "Sports",
     slug: "sports",
     description: "Match days, tournaments, watch parties, and arena experiences.",
-    accent_color: "#f2b705",
+    accent_color: "#4f46e5",
     icon: "trophy",
     image_url: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=80",
     sort_order: 3
@@ -34,7 +34,7 @@ const categories = [
     name: "Concerts",
     slug: "concerts",
     description: "Big-stage nights, tours, intimate sessions, and festival lineups.",
-    accent_color: "#8b5cf6",
+    accent_color: "#b13cff",
     icon: "mic-2",
     image_url: "https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=900&q=80",
     sort_order: 4
@@ -44,7 +44,7 @@ const categories = [
     name: "Nightlife",
     slug: "nightlife",
     description: "Rooftop parties, lounges, club nights, and curated social scenes.",
-    accent_color: "#ef476f",
+    accent_color: "#e044c7",
     icon: "sparkles",
     image_url: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=80",
     sort_order: 5

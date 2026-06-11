@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS categories (
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
-  accent_color TEXT NOT NULL DEFAULT '#0db39e',
+  accent_color TEXT NOT NULL DEFAULT '#7928f5',
   icon TEXT NOT NULL DEFAULT 'ticket',
   image_url TEXT NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 1,

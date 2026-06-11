@@ -35,8 +35,11 @@ function nextId(records) {
 
 function normalizeEventRow(row) {
   if (!row) return null;
+  const startingPriceUsdCents = Number(row.starting_price_usd_cents || 0);
   return {
     ...row,
+    starting_price_usd_cents: startingPriceUsdCents || null,
+    price_label: startingPriceUsdCents ? `From $${(startingPriceUsdCents / 100).toLocaleString("en-US")}` : null,
     category: row.category_name
       ? {
           id: row.category_id,
@@ -121,9 +124,15 @@ function createMemoryStore() {
     if (!event) return null;
     const category = data.categories.find((item) => Number(item.id) === Number(event.category_id));
     const venue = data.venues.find((item) => Number(item.id) === Number(event.venue_id));
+    const startingPriceUsdCents = data.ticketOptions
+      .filter((item) => Number(item.event_id) === Number(event.id))
+      .reduce((lowest, item) => Math.min(lowest, Number(item.price_usd_cents)), Number.POSITIVE_INFINITY);
+    const hasStartingPrice = Number.isFinite(startingPriceUsdCents);
 
     return {
       ...event,
+      starting_price_usd_cents: hasStartingPrice ? startingPriceUsdCents : null,
+      price_label: hasStartingPrice ? `From $${(startingPriceUsdCents / 100).toLocaleString("en-US")}` : null,
       category,
       venue,
       category_name: category?.name,
@@ -202,7 +211,7 @@ function createMemoryStore() {
         name: payload.name,
         slug: uniqueSlug(makeSlug(payload.slug || payload.name), data.categories),
         description: payload.description || "",
-        accent_color: payload.accent_color || "#0db39e",
+        accent_color: payload.accent_color || "#7928f5",
         icon: payload.icon || "ticket",
         image_url: payload.image_url || "",
         sort_order: Number(payload.sort_order || data.categories.length + 1)
@@ -217,7 +226,7 @@ function createMemoryStore() {
         name: payload.name,
         slug: uniqueSlug(makeSlug(payload.slug || payload.name), data.categories, id),
         description: payload.description || "",
-        accent_color: payload.accent_color || "#0db39e",
+        accent_color: payload.accent_color || "#7928f5",
         icon: payload.icon || "ticket",
         image_url: payload.image_url || "",
         sort_order: Number(payload.sort_order || category.sort_order || 1)
@@ -348,10 +357,16 @@ function createDbStore(memoryStore) {
   const eventSelect = `
     SELECT e.*,
       c.name AS category_name, c.slug AS category_slug, c.icon AS category_icon, c.accent_color AS category_accent_color,
-      v.name AS venue_name, v.slug AS venue_slug, v.city, v.state, v.country, v.address
+      v.name AS venue_name, v.slug AS venue_slug, v.city, v.state, v.country, v.address,
+      pricing.starting_price_usd_cents
     FROM events e
     LEFT JOIN categories c ON c.id = e.category_id
     LEFT JOIN venues v ON v.id = e.venue_id
+    LEFT JOIN LATERAL (
+      SELECT MIN(t.price_usd_cents) AS starting_price_usd_cents
+      FROM ticket_options t
+      WHERE t.event_id = e.id
+    ) pricing ON true
   `;
 
   async function fallback(name, operation, memoryOperation) {
@@ -478,7 +493,7 @@ function createDbStore(memoryStore) {
               payload.name,
               slug,
               payload.description || "",
-              payload.accent_color || "#0db39e",
+              payload.accent_color || "#7928f5",
               payload.icon || "ticket",
               payload.image_url || "",
               Number(payload.sort_order || 1)
@@ -502,7 +517,7 @@ function createDbStore(memoryStore) {
               payload.name,
               slug,
               payload.description || "",
-              payload.accent_color || "#0db39e",
+              payload.accent_color || "#7928f5",
               payload.icon || "ticket",
               payload.image_url || "",
               Number(payload.sort_order || 1),
@@ -696,7 +711,7 @@ function createDbStore(memoryStore) {
             ]
           );
           await store.replaceTicketOptions(id, payload.ticket_options || []);
-          return normalizeEventRow(result.rows[0]);
+          return store.getEventById(id);
         },
         () => memoryStore.updateEvent(id, payload)
       ),

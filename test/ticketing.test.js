@@ -1,13 +1,22 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
+import ejs from "ejs";
 import JSZip from "jszip";
 
 import { connectionStringForPool } from "../src/db.js";
+import createStore from "../src/store.js";
 import { createPaystackService } from "../src/services/paystack.js";
 import { createTicketmasterService, mapTicketmasterEvent, parseRetryAfter, queryKey } from "../src/services/ticketmaster.js";
 import { buildTicketZip } from "../src/services/tickets.js";
+import helpers from "../src/utils/view-helpers.js";
+
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.join(testDir, "..");
 
 function response(payload, status = 200, headers = {}) {
   return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json", ...headers } });
@@ -66,6 +75,34 @@ test("maps Ticketmaster events without Ticketmaster pricing", () => {
   assert.equal(mapped.venue_name, "Main Hall");
   assert.equal(mapped.priceRanges, undefined);
   assert.equal(mapped.price_label, undefined);
+});
+
+test("seeded local events expose USD starting prices and cards display price only", async () => {
+  const store = createStore();
+  const [event] = await store.listEvents({ limit: 1 });
+  assert.equal(event.starting_price_usd_cents, 50000);
+  assert.equal(event.price_label, "From $500");
+
+  const html = await ejs.renderFile(path.join(projectRoot, "views", "partials", "event-card.ejs"), {
+    event,
+    helpers
+  });
+  assert.match(html, /class="price-pill">From \$500</);
+  assert.doesNotMatch(html, /status-pill/);
+  assert.doesNotMatch(html, />Available</);
+});
+
+test("ordered migrations include the Ticketmaster commerce schema", () => {
+  const migrations = fs
+    .readdirSync(path.join(projectRoot, "migrations"))
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+  assert.deepEqual(migrations, ["001_init.sql", "002_ticketmaster_payments.sql"]);
+
+  const commerceMigration = fs.readFileSync(path.join(projectRoot, "migrations", "002_ticketmaster_payments.sql"), "utf8");
+  for (const table of ["external_event_prices", "orders", "tickets", "payment_webhook_events", "email_deliveries"]) {
+    assert.match(commerceMigration, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
+  }
 });
 
 test("Ticketmaster query hashing and Retry-After parsing are stable", () => {
