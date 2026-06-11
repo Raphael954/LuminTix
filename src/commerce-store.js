@@ -2,13 +2,6 @@ import crypto from "node:crypto";
 
 import { getPool, isConfigured, query } from "./db.js";
 
-const PRICE_TIERS = [
-  { price_usd: 500, ticket_type: "Standard" },
-  { price_usd: 1000, ticket_type: "Standard Plus" },
-  { price_usd: 1500, ticket_type: "Premium" },
-  { price_usd: 2000, ticket_type: "VIP" }
-];
-
 function requireDatabase() {
   if (!isConfigured()) {
     throw new Error("DATABASE_URL is required for checkout, payments, and ticket issuance.");
@@ -218,7 +211,13 @@ export default function createCommerceStore() {
                   '[]'::jsonb
                 ) AS tickets
          FROM orders o
-         LEFT JOIN email_deliveries ed ON ed.order_id = o.id
+         LEFT JOIN LATERAL (
+           SELECT status, attempts
+           FROM email_deliveries
+           WHERE order_id = o.id
+           ORDER BY (provider = 'brevo') DESC, updated_at DESC, id DESC
+           LIMIT 1
+         ) ed ON true
          LEFT JOIN tickets t ON t.order_id = o.id
          GROUP BY o.id, ed.status, ed.attempts
          ORDER BY o.created_at DESC LIMIT $1`,
@@ -266,7 +265,7 @@ export default function createCommerceStore() {
       }
 
       await client.query(
-        `INSERT INTO email_deliveries (order_id) VALUES ($1)
+        `INSERT INTO email_deliveries (order_id, provider) VALUES ($1, 'brevo')
          ON CONFLICT (order_id, provider) DO NOTHING`,
         [order.id]
       );
@@ -329,6 +328,7 @@ export default function createCommerceStore() {
            ed.status IN ('pending','failed')
            OR (ed.status = 'processing' AND ed.updated_at < NOW() - INTERVAL '15 minutes')
          )
+           AND ed.provider = 'brevo'
            AND ed.attempts < 5
          ORDER BY ed.updated_at ASC
          FOR UPDATE SKIP LOCKED
@@ -371,7 +371,7 @@ export default function createCommerceStore() {
     requireDatabase();
     return (
       await query(
-        `INSERT INTO email_deliveries (order_id) VALUES ($1)
+        `INSERT INTO email_deliveries (order_id, provider) VALUES ($1, 'brevo')
          ON CONFLICT (order_id, provider) DO UPDATE
          SET status = 'pending', attempts = 0, last_error = NULL, updated_at = NOW()
          RETURNING *`,
@@ -398,7 +398,6 @@ export default function createCommerceStore() {
   }
 
   return {
-    PRICE_TIERS,
     assignExternalEventPrices,
     cleanupExternalPrices,
     consumeTicket,

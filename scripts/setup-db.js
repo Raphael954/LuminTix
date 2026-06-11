@@ -1,17 +1,12 @@
 import "dotenv/config";
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 import { validateConfig } from "../src/config.js";
 import { getPool } from "../src/db.js";
 import seed from "../src/data/seed.js";
+import { runMigrations } from "./migrations.js";
 
 validateConfig();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function upsertSequence(pool, tableName) {
   await pool.query(
@@ -26,14 +21,7 @@ async function main() {
     throw new Error("DATABASE_URL is required. Add it to .env, then run npm run db:setup.");
   }
 
-  const migrationsDir = path.join(__dirname, "..", "migrations");
-  const migrationFiles = fs
-    .readdirSync(migrationsDir)
-    .filter((file) => file.endsWith(".sql"))
-    .sort();
-  for (const migrationFile of migrationFiles) {
-    await pool.query(fs.readFileSync(path.join(migrationsDir, migrationFile), "utf8"));
-  }
+  await runMigrations(pool);
 
   const adminName = process.env.ADMIN_NAME || "Site Admin";
   const adminEmail = process.env.ADMIN_EMAIL || "admin@lumin.local";

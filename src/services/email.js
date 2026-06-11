@@ -1,6 +1,8 @@
-import { Resend } from "resend";
-
+import { getAppUrl, readInt } from "../config.js";
 import { buildTicketZip } from "./tickets.js";
+
+const BREVO_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
+const DEFAULT_SENDER_NAME = "LuminTix Tickets (No Reply)";
 
 function escapeHtml(value = "") {
   return String(value)
@@ -11,35 +13,74 @@ function escapeHtml(value = "") {
     .replaceAll("'", "&#039;");
 }
 
-function createEmailService({ commerceStore }) {
-  const enabled = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+async function readResponseBody(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function createEmailService({ commerceStore, fetchImpl = fetch, buildZip = buildTicketZip } = {}) {
+  const timeoutMs = readInt("BREVO_REQUEST_TIMEOUT_MS", 15000, { min: 1000, max: 60000 });
+  const enabled = Boolean(process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL);
 
   async function sendOrderTickets(orderWithTickets, delivery) {
-    if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
-      throw new Error("RESEND_API_KEY and EMAIL_FROM are required to send tickets.");
+    if (!process.env.BREVO_API_KEY || !process.env.BREVO_SENDER_EMAIL) {
+      throw new Error("BREVO_API_KEY and BREVO_SENDER_EMAIL are required to send tickets.");
     }
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const zip = await buildTicketZip(orderWithTickets);
-    const downloadUrl = `${process.env.APP_URL}/orders/${orderWithTickets.public_token}/success`;
-    const result = await resend.emails.send({
-      from: process.env.EMAIL_FROM,
-      to: orderWithTickets.customer_email,
-      subject: `Your LuminTix tickets for ${orderWithTickets.event_snapshot.title}`,
-      html: `
+
+    const senderName = process.env.BREVO_SENDER_NAME || DEFAULT_SENDER_NAME;
+    const zip = await buildZip(orderWithTickets);
+    const downloadUrl = `${getAppUrl()}/orders/${orderWithTickets.public_token}/success`;
+    const ticketCount = `${orderWithTickets.quantity} ticket${orderWithTickets.quantity === 1 ? "" : "s"}`;
+    const eventTitle = orderWithTickets.event_snapshot.title;
+    const response = await fetchImpl(BREVO_EMAIL_URL, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        sender: {
+          name: senderName,
+          email: process.env.BREVO_SENDER_EMAIL
+        },
+        to: [
+          {
+            name: orderWithTickets.customer_name,
+            email: orderWithTickets.customer_email
+          }
+        ],
+        subject: `Your LuminTix tickets for ${eventTitle}`,
+        htmlContent: `
         <h1>Your tickets are ready</h1>
-        <p>${orderWithTickets.quantity} ticket${orderWithTickets.quantity === 1 ? "" : "s"} for
-        <strong>${escapeHtml(orderWithTickets.event_snapshot.title)}</strong> are attached.</p>
+        <p>${ticketCount} for <strong>${escapeHtml(eventTitle)}</strong> are attached.</p>
         <p>You can also download them from <a href="${escapeHtml(downloadUrl)}">${escapeHtml(downloadUrl)}</a>.</p>
+        <p>This is an automated ticket-delivery email from an unmonitored mailbox. Replies are not read.</p>
       `,
-      attachments: [
-        {
-          filename: `lumintix-${orderWithTickets.order_code}-tickets.zip`,
-          content: zip.toString("base64")
-        }
-      ]
+        textContent: `Your ${ticketCount} for ${eventTitle} are attached. You can also download them from ${downloadUrl}. This is an automated ticket-delivery email from an unmonitored mailbox. Replies are not read.`,
+        attachment: [
+          {
+            name: `lumintix-${orderWithTickets.order_code}-tickets.zip`,
+            content: zip.toString("base64")
+          }
+        ],
+        tags: ["ticket-delivery"]
+      }),
+      signal: AbortSignal.timeout(timeoutMs)
     });
-    if (result.error) throw new Error(result.error.message);
-    await commerceStore.updateEmailDelivery(delivery.id, { status: "sent", provider_id: result.data?.id });
+
+    const result = await readResponseBody(response);
+    if (response.status !== 201 || !result.messageId) {
+      const detail = result.message || result.code || "Unexpected response.";
+      throw new Error(`Brevo ticket delivery failed (${response.status}): ${detail}`);
+    }
+
+    await commerceStore.updateEmailDelivery(delivery.id, { status: "sent", provider_id: result.messageId });
   }
 
   async function processPending() {
@@ -59,4 +100,4 @@ function createEmailService({ commerceStore }) {
   return { enabled, processPending, sendOrderTickets };
 }
 
-export { createEmailService };
+export { BREVO_EMAIL_URL, createEmailService };

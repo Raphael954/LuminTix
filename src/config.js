@@ -18,16 +18,36 @@ function requireEnv(name) {
   }
 }
 
+function normalizeAppUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`);
+  return url.origin;
+}
+
+function getAppUrl({ port = Number(process.env.PORT || 3000) } = {}) {
+  if (process.env.APP_URL) return normalizeAppUrl(process.env.APP_URL);
+
+  if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return normalizeAppUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+  }
+
+  if (process.env.VERCEL_URL) return normalizeAppUrl(process.env.VERCEL_URL);
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return normalizeAppUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+
+  return `http://localhost:${port}`;
+}
+
 function validateConfig() {
   if (!isProduction) return;
 
   requireEnv("DATABASE_URL");
   requireEnv("SESSION_SECRET");
-  requireEnv("APP_URL");
   requireEnv("TICKETMASTER_API_KEY");
   requireEnv("PAYSTACK_SECRET_KEY");
-  requireEnv("RESEND_API_KEY");
-  requireEnv("EMAIL_FROM");
+  requireEnv("BREVO_API_KEY");
+  requireEnv("BREVO_SENDER_NAME");
+  requireEnv("BREVO_SENDER_EMAIL");
   requireEnv("ADMIN_EMAIL");
   requireEnv("ADMIN_PASSWORD");
 
@@ -39,9 +59,9 @@ function validateConfig() {
     throw new Error("ADMIN_PASSWORD must be changed before production database setup.");
   }
 
-  if (!process.env.APP_URL.startsWith("https://")) {
-    throw new Error("APP_URL must use HTTPS in production.");
+  if (!getAppUrl().startsWith("https://")) {
+    throw new Error("APP_URL or the resolved Vercel deployment URL must use HTTPS in production.");
   }
 }
 
-export { isProduction, readBool, readInt, validateConfig };
+export { getAppUrl, isProduction, normalizeAppUrl, readBool, readInt, validateConfig };

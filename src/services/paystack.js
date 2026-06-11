@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { readInt } from "../config.js";
+import { getAppUrl, readInt } from "../config.js";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
@@ -25,7 +25,7 @@ function createPaystackService({ fetchImpl = fetch } = {}) {
         currency: "USD",
         reference: order.paystack_reference,
         channels: ["card"],
-        callback_url: `${process.env.APP_URL}/payments/paystack/callback`,
+        callback_url: `${getAppUrl()}/payments/paystack/callback`,
         metadata: {
           order_code: order.order_code,
           public_token: order.public_token,
