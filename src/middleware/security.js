@@ -10,7 +10,7 @@ function ensureCsrfToken(req) {
 }
 
 function csrfProtection(req, res, next) {
-  if (req.path === "/healthz") {
+  if (req.path === "/healthz" || req.path === "/webhooks/paystack") {
     return next();
   }
 
@@ -42,12 +42,12 @@ const loginLimiter = rateLimit({
   message: "Too many sign-in attempts. Please try again shortly."
 });
 
-const bookingLimiter = rateLimit({
+const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 40,
   standardHeaders: true,
   legacyHeaders: false,
-  message: "Too many ticket requests. Please try again shortly."
+  message: "Too many payment attempts. Please try again shortly."
 });
 
-export { bookingLimiter, csrfProtection, loginLimiter };
+export { csrfProtection, loginLimiter, paymentLimiter };

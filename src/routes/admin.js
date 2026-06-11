@@ -1,6 +1,13 @@
 import express from "express";
 import { loginLimiter } from "../middleware/security.js";
 
+const DEFAULT_TICKET_OPTIONS = [
+  "Standard | 500 | General admission access. | Available",
+  "Standard Plus | 1000 | Enhanced placement and guest amenities. | Available",
+  "Premium | 1500 | Premium viewing and hospitality access. | Available",
+  "VIP | 2000 | Top-tier access and VIP hospitality. | Available"
+].join("\n");
+
 function setFlash(req, type, message) {
   req.session.flash = { type, message };
 }
@@ -24,15 +31,22 @@ function parseTicketOptions(value = "") {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [name, price_label, description, availability_label] = line.split("|").map((part) => part?.trim() || "");
+      const [name, priceUsd, description, availability_label] = line.split("|").map((part) => part?.trim() || "");
+      const price_usd_cents = Math.round(Number(priceUsd) * 100);
       return {
         name,
-        price_label,
+        price_usd_cents,
         description,
-        availability_label: availability_label || "Request only"
+        availability_label: availability_label || "Available"
       };
     })
-    .filter((option) => option.name);
+    .filter(
+      (option) =>
+        option.name &&
+        Number.isInteger(option.price_usd_cents) &&
+        option.price_usd_cents > 0 &&
+        option.price_usd_cents <= 100000000
+    );
 }
 
 function assertRequired(body, fields) {
@@ -47,12 +61,18 @@ function assertRequired(body, fields) {
 function ticketOptionsToText(options = []) {
   return options
     .map((option) =>
-      [option.name, option.price_label, option.description, option.availability_label].filter(Boolean).join(" | ")
+      [option.name, option.price_usd_cents / 100, option.description, option.availability_label].filter(Boolean).join(" | ")
     )
     .join("\n");
 }
 
 function eventPayload(body) {
+  const ticket_options = parseTicketOptions(body.ticket_options);
+  if (!ticket_options.length) {
+    const error = new Error("Add at least one ticket option with a numeric USD price.");
+    error.status = 400;
+    throw error;
+  }
   return {
     title: body.title,
     slug: body.slug,
@@ -63,17 +83,17 @@ function eventPayload(body) {
     starts_at: body.starts_at,
     ends_at: body.ends_at,
     status: body.status,
-    availability_status: body.availability_status,
+    availability_status: body.availability_status || "available",
     image_url: body.image_url,
     hero_image_url: body.hero_image_url,
     tags: parseTags(body.tags),
     is_featured: body.is_featured === "on",
     external_url: body.external_url,
-    ticket_options: parseTicketOptions(body.ticket_options)
+    ticket_options
   };
 }
 
-export default function adminRoutes(store) {
+export default function adminRoutes({ store, commerceStore, emailService }) {
   const router = express.Router();
 
   router.get("/login", (req, res) => {
@@ -109,17 +129,18 @@ export default function adminRoutes(store) {
 
   router.get("/", async (req, res, next) => {
     try {
-      const [stats, events, requests] = await Promise.all([
+      const [stats, commerceStats, events, orders] = await Promise.all([
         store.getStats(),
+        commerceStore.getCommerceStats(),
         store.listEvents({ includeDrafts: true, limit: 5 }),
-        store.listBookingRequests()
+        commerceStore.listOrders(6)
       ]);
 
       res.render("admin/dashboard", {
         title: "Admin dashboard",
-        stats,
+        stats: { ...stats, ...commerceStats },
         events,
-        requests: requests.slice(0, 6)
+        orders
       });
     } catch (error) {
       next(error);
@@ -145,7 +166,7 @@ export default function adminRoutes(store) {
         event: {},
         categories,
         venues,
-        ticketOptionsText: ""
+        ticketOptionsText: DEFAULT_TICKET_OPTIONS
       });
     } catch (error) {
       next(error);
@@ -322,22 +343,25 @@ export default function adminRoutes(store) {
     }
   });
 
-  router.get("/requests", async (req, res, next) => {
+  router.get("/orders", async (req, res, next) => {
     try {
-      res.render("admin/requests", {
-        title: "Booking requests",
-        requests: await store.listBookingRequests()
+      res.render("admin/orders", {
+        title: "Orders, payments, and tickets",
+        orders: await commerceStore.listOrders()
       });
     } catch (error) {
       next(error);
     }
   });
 
-  router.post("/requests/:id/status", async (req, res, next) => {
+  router.post("/orders/:id/resend", async (req, res, next) => {
     try {
-      await store.updateBookingStatus(req.params.id, req.body.status);
-      setFlash(req, "success", "Request status updated.");
-      res.redirect("/admin/requests");
+      const order = await commerceStore.getOrderById(req.params.id);
+      if (!order || order.status !== "paid") return next({ status: 404, message: "Paid order not found." });
+      await commerceStore.resetEmailDelivery(order.id);
+      void emailService.processPending();
+      setFlash(req, "success", "Ticket email queued for delivery.");
+      res.redirect("/admin/orders");
     } catch (error) {
       next(error);
     }

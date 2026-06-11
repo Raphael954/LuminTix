@@ -1,68 +1,30 @@
 <section class="admin-shell">
   <div class="container">
     <div class="admin-heading">
-      <div>
-        <span class="eyebrow">Admin</span>
-        <h1>Dashboard</h1>
-      </div>
-      <a class="btn btn-accent" href="/admin/events/new">
-        <i data-lucide="plus"></i>
-        <span>New event</span>
-      </a>
+      <div><span class="eyebrow">Admin</span><h1>Dashboard</h1></div>
+      <a class="btn btn-accent" href="/admin/events/new"><i data-lucide="plus"></i><span>New event</span></a>
     </div>
-
     <div class="admin-tabs">
-      <a class="active" href="/admin">Overview</a>
-      <a href="/admin/events">Events</a>
-      <a href="/admin/categories">Categories</a>
-      <a href="/admin/venues">Venues</a>
-      <a href="/admin/requests">Requests</a>
+      <a class="active" href="/admin">Overview</a><a href="/admin/events">Events</a>
+      <a href="/admin/categories">Categories</a><a href="/admin/venues">Venues</a><a href="/admin/orders">Orders</a>
     </div>
-
     <div class="stats-grid">
-      <div class="stat-card">
-        <span><i data-lucide="calendar-days"></i></span>
-        <strong><%= stats.events %></strong>
-        <p>Events</p>
-      </div>
-      <div class="stat-card">
-        <span><i data-lucide="layout-grid"></i></span>
-        <strong><%= stats.categories %></strong>
-        <p>Categories</p>
-      </div>
-      <div class="stat-card">
-        <span><i data-lucide="map"></i></span>
-        <strong><%= stats.venues %></strong>
-        <p>Venues</p>
-      </div>
-      <div class="stat-card">
-        <span><i data-lucide="message-circle"></i></span>
-        <strong><%= stats.requests %></strong>
-        <p>Requests</p>
-      </div>
+      <div class="stat-card"><span><i data-lucide="calendar-days"></i></span><strong><%= stats.events %></strong><p>Events</p></div>
+      <div class="stat-card"><span><i data-lucide="receipt-text"></i></span><strong><%= stats.paid_orders %></strong><p>Paid orders</p></div>
+      <div class="stat-card"><span><i data-lucide="ticket-check"></i></span><strong><%= stats.tickets %></strong><p>Tickets issued</p></div>
+      <div class="stat-card"><span><i data-lucide="circle-dollar-sign"></i></span><strong><%= helpers.formatUsd(stats.revenue_usd_cents) %></strong><p>Revenue</p></div>
     </div>
-
     <div class="row g-4">
       <div class="col-lg-7">
         <div class="admin-panel">
-          <div class="admin-panel-heading">
-            <h2>Recent events</h2>
-            <a href="/admin/events">Manage</a>
-          </div>
+          <div class="admin-panel-heading"><h2>Recent events</h2><a href="/admin/events">Manage</a></div>
           <div class="table-responsive">
             <table class="table admin-table align-middle">
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
+              <thead><tr><th>Event</th><th>Date</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 <% events.forEach((event) => { %>
                   <tr>
-                    <td><strong><%= event.title %></strong><br><span><%= event.venue_name %></span></td>
+                    <td><strong><%= event.title %></strong><small><%= event.venue_name %></small></td>
                     <td><%= helpers.formatDate(event.starts_at) %></td>
                     <td><span class="status-pill status-<%= event.availability_status %>"><%= helpers.statusLabel(event.availability_status) %></span></td>
                     <td><a class="btn btn-sm btn-outline-dark" href="/admin/events/<%= event.id %>/edit">Edit</a></td>
@@ -75,20 +37,11 @@
       </div>
       <div class="col-lg-5">
         <div class="admin-panel">
-          <div class="admin-panel-heading">
-            <h2>Latest requests</h2>
-            <a href="/admin/requests">View all</a>
-          </div>
+          <div class="admin-panel-heading"><h2>Latest orders</h2><a href="/admin/orders">View all</a></div>
           <div class="request-list-mini">
-            <% if (!requests.length) { %>
-              <p class="muted-copy">No requests yet.</p>
-            <% } %>
-            <% requests.forEach((request) => { %>
-              <div>
-                <strong><%= request.customer_name %></strong>
-                <span><%= request.event_title %></span>
-                <small><%= request.request_code %> · <%= helpers.statusLabel(request.status) %></small>
-              </div>
+            <% if (!orders.length) { %><p class="muted-copy">No orders yet.</p><% } %>
+            <% orders.forEach((order) => { %>
+              <div><strong><%= order.customer_name %></strong><span><%= order.event_snapshot.title %></span><small><%= order.order_code %> · <%= helpers.formatUsd(order.amount_usd_cents) %> · <%= helpers.statusLabel(order.status) %></small></div>
             <% }) %>
           </div>
         </div>

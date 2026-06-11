@@ -121,7 +121,7 @@ const events = [
     starts_at: "2026-07-18T19:00:00+01:00",
     ends_at: "2026-07-19T01:00:00+01:00",
     status: "published",
-    availability_status: "request_only",
+    availability_status: "available",
     image_url: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=80",
     hero_image_url: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1800&q=80",
     tags: ["Afrobeats", "Outdoor", "VIP"],
@@ -159,7 +159,7 @@ const events = [
     starts_at: "2026-08-02T18:00:00+01:00",
     ends_at: "2026-08-02T22:00:00+01:00",
     status: "published",
-    availability_status: "request_only",
+    availability_status: "available",
     image_url: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=900&q=80",
     hero_image_url: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=1800&q=80",
     tags: ["Premiere", "Cinema", "Q&A"],
@@ -190,14 +190,14 @@ const events = [
     id: 5,
     title: "Alte Cruise Rooftop",
     slug: "alte-cruise-rooftop",
-    summary: "A stylish nightlife session with alternative sounds, guest DJs, and reserved table requests.",
+    summary: "A stylish nightlife session with alternative sounds, guest DJs, and reserved tables.",
     description: "Alte Cruise Rooftop is designed for a softer but still electric night out: alternative Afrobeats, deep house pockets, curated tables, and a skyline view.",
     category_id: 5,
     venue_id: 3,
     starts_at: "2026-08-14T21:00:00+01:00",
     ends_at: "2026-08-15T03:00:00+01:00",
     status: "published",
-    availability_status: "request_only",
+    availability_status: "available",
     image_url: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=900&q=80",
     hero_image_url: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=1800&q=80",
     tags: ["Rooftop", "DJs", "Tables"],
@@ -226,25 +226,27 @@ const events = [
   }
 ];
 
-const ticketOptions = [
-  { id: 1, event_id: 1, name: "Regular Access", price_label: "From NGN 20,000", description: "Entry access with standing-room energy.", availability_label: "Request only", sort_order: 1 },
-  { id: 2, event_id: 1, name: "VIP Table", price_label: "From NGN 450,000", description: "Reserved table for groups with premium placement.", availability_label: "Request only", sort_order: 2 },
-  { id: 3, event_id: 2, name: "Table for Two", price_label: "From NGN 75,000", description: "Reserved candlelit seating for two guests.", availability_label: "Limited", sort_order: 1 },
-  { id: 4, event_id: 2, name: "Listening Room Seat", price_label: "From NGN 25,000", description: "Single reserved seat in the listening room.", availability_label: "Limited", sort_order: 2 },
-  { id: 5, event_id: 3, name: "Premiere Seat", price_label: "From NGN 18,000", description: "Reserved cinema seat and premiere access.", availability_label: "Request only", sort_order: 1 },
-  { id: 6, event_id: 3, name: "Red Carpet Bundle", price_label: "From NGN 50,000", description: "Photo access, preferred seating, and lounge access.", availability_label: "Request only", sort_order: 2 },
-  { id: 7, event_id: 4, name: "Fan Zone Pass", price_label: "From NGN 12,000", description: "General access to screen zones and food court.", availability_label: "Available", sort_order: 1 },
-  { id: 8, event_id: 4, name: "Premium Lounge", price_label: "From NGN 95,000", description: "Comfort seating, lounge access, and table service.", availability_label: "Request only", sort_order: 2 },
-  { id: 9, event_id: 5, name: "Rooftop Access", price_label: "From NGN 30,000", description: "Entry access to the rooftop party.", availability_label: "Request only", sort_order: 1 },
-  { id: 10, event_id: 5, name: "Group Table", price_label: "From NGN 380,000", description: "Reserved group table with host support.", availability_label: "Request only", sort_order: 2 },
-  { id: 11, event_id: 6, name: "Courtside Request", price_label: "From NGN 120,000", description: "Premium close-view seating request.", availability_label: "Limited", sort_order: 1 },
-  { id: 12, event_id: 6, name: "Family Row", price_label: "From NGN 60,000", description: "Grouped seating request for family attendance.", availability_label: "Limited", sort_order: 2 }
+const tiers = [
+  { name: "Standard", price_usd_cents: 50000, description: "General admission access." },
+  { name: "Standard Plus", price_usd_cents: 100000, description: "Enhanced placement and guest amenities." },
+  { name: "Premium", price_usd_cents: 150000, description: "Premium viewing and hospitality access." },
+  { name: "VIP", price_usd_cents: 200000, description: "Top-tier access and VIP hospitality." }
 ];
+
+const ticketOptions = events.flatMap((event) =>
+  tiers.map((tier, index) => ({
+    id: (event.id - 1) * tiers.length + index + 1,
+    event_id: event.id,
+    ...tier,
+    price_label: `$${(tier.price_usd_cents / 100).toLocaleString("en-US")}`,
+    availability_label: "Available",
+    sort_order: index + 1
+  }))
+);
 
 export default {
   categories,
   venues,
   events,
-  ticketOptions,
-  bookingRequests: []
+  ticketOptions
 };

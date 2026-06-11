@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "private": true,
-  "description": "Modern entertainment discovery and WhatsApp booking platform.",
+  "description": "Modern entertainment discovery, payment, and digital ticket platform.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "check": "node scripts/check.js",
+    "test": "node --test",
     "db:setup": "node scripts/setup-db.js"
   },
   "engines": {
@@ -24,9 +25,14 @@
     "express-rate-limit": "^8.5.2",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
+    "jszip": "^3.10.1",
     "method-override": "^3.0.0",
     "morgan": "^1.10.1",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.16.3",
+    "qrcode": "^1.5.4",
+    "resend": "^6.12.4",
+    "sharp": "^0.35.0",
     "slugify": "^1.6.6"
   }
 }

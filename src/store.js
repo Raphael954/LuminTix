@@ -87,46 +87,15 @@ function matchesDateFilter(eventDate, filter) {
   return true;
 }
 
-function buildRequestCode() {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `LT-${timestamp}-${suffix}`;
-}
-
-function buildWhatsAppMessage({ requestCode, event, ticketOption, booking }) {
-  const venueName = event.venue_name || event.venue?.name || "Venue to confirm";
-  const city = event.city || event.venue?.city || "";
-  const date = new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(new Date(event.starts_at));
-
-  return [
-    `Hello LuminTix, I want to request tickets.`,
-    ``,
-    `Request ID: ${requestCode}`,
-    `Event: ${event.title}`,
-    `Date: ${date}`,
-    `Venue: ${venueName}${city ? `, ${city}` : ""}`,
-    `Ticket: ${ticketOption?.name || "To be advised"}`,
-    `Price: ${ticketOption?.price_label || "To be advised"}`,
-    `Quantity: ${booking.quantity}`,
-    ``,
-    `Customer: ${booking.customer_name}`,
-    `Phone: ${booking.customer_phone}`,
-    `Email: ${booking.customer_email || "Not provided"}`,
-    booking.note ? `Note: ${booking.note}` : ""
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function whatsappUrl(message) {
-  const phone = process.env.WHATSAPP_PHONE || "2348000000000";
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+function normalizeTicketOption(option) {
+  if (!option) return null;
+  const cents = Number(option.price_usd_cents || 0);
+  return {
+    ...option,
+    price_usd_cents: cents,
+    price_label: `$${(cents / 100).toLocaleString("en-US")}`,
+    availability_label: option.availability_label || "Available"
+  };
 }
 
 function createMemoryStore() {
@@ -140,9 +109,9 @@ function createMemoryStore() {
         id: nextId(data.ticketOptions),
         event_id: Number(eventId),
         name: option.name,
-        price_label: option.price_label || "",
+        price_usd_cents: Number(option.price_usd_cents),
         description: option.description || "",
-        availability_label: option.availability_label || "Request only",
+        availability_label: option.availability_label || "Available",
         sort_order: index + 1
       });
     });
@@ -313,7 +282,7 @@ function createMemoryStore() {
         starts_at: payload.starts_at,
         ends_at: payload.ends_at || null,
         status: payload.status || "published",
-        availability_status: payload.availability_status || "request_only",
+        availability_status: payload.availability_status || "available",
         image_url: payload.image_url || "",
         hero_image_url: payload.hero_image_url || payload.image_url || "",
         tags: payload.tags || [],
@@ -338,7 +307,7 @@ function createMemoryStore() {
         starts_at: payload.starts_at,
         ends_at: payload.ends_at || null,
         status: payload.status || "published",
-        availability_status: payload.availability_status || "request_only",
+        availability_status: payload.availability_status || "available",
         image_url: payload.image_url || "",
         hero_image_url: payload.hero_image_url || payload.image_url || "",
         tags: payload.tags || [],
@@ -357,48 +326,14 @@ function createMemoryStore() {
     listTicketOptions: async (eventId) =>
       data.ticketOptions
         .filter((item) => Number(item.event_id) === Number(eventId))
-        .sort((a, b) => a.sort_order - b.sort_order),
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map(normalizeTicketOption),
     replaceTicketOptions: async (eventId, options) => replaceMemoryTicketOptions(eventId, options),
-
-    createBookingRequest: async (payload) => {
-      const event = decorateEvent(data.events.find((item) => Number(item.id) === Number(payload.event_id)));
-      const ticketOption = data.ticketOptions.find((item) => Number(item.id) === Number(payload.ticket_option_id));
-      const requestCode = buildRequestCode();
-      const booking = {
-        id: nextId(data.bookingRequests),
-        request_code: requestCode,
-        event_id: Number(payload.event_id),
-        ticket_option_id: Number(payload.ticket_option_id) || null,
-        quantity: Number(payload.quantity || 1),
-        customer_name: payload.customer_name,
-        customer_phone: payload.customer_phone,
-        customer_email: payload.customer_email || "",
-        note: payload.note || "",
-        status: "new",
-        created_at: new Date().toISOString()
-      };
-      booking.whatsapp_message = buildWhatsAppMessage({ requestCode, event, ticketOption, booking });
-      booking.whatsapp_url = whatsappUrl(booking.whatsapp_message);
-      data.bookingRequests.unshift(booking);
-      return booking;
-    },
-    listBookingRequests: async () =>
-      data.bookingRequests.map((request) => ({
-        ...request,
-        event_title: data.events.find((event) => Number(event.id) === Number(request.event_id))?.title,
-        ticket_name: data.ticketOptions.find((ticket) => Number(ticket.id) === Number(request.ticket_option_id))?.name
-      })),
-    updateBookingStatus: async (id, status) => {
-      const request = data.bookingRequests.find((item) => Number(item.id) === Number(id));
-      if (request) request.status = status;
-      return request;
-    },
 
     getStats: async () => ({
       events: data.events.length,
       categories: data.categories.length,
-      venues: data.venues.length,
-      requests: data.bookingRequests.length
+      venues: data.venues.length
     }),
     verifyAdmin: async (email, password) => {
       const adminEmail = process.env.ADMIN_EMAIL || "admin@lumin.local";
@@ -715,7 +650,7 @@ function createDbStore(memoryStore) {
               payload.starts_at,
               payload.ends_at || "",
               payload.status || "published",
-              payload.availability_status || "request_only",
+              payload.availability_status || "available",
               payload.image_url || "",
               payload.hero_image_url || payload.image_url || "",
               payload.tags || [],
@@ -751,7 +686,7 @@ function createDbStore(memoryStore) {
               payload.starts_at,
               payload.ends_at || "",
               payload.status || "published",
-              payload.availability_status || "request_only",
+              payload.availability_status || "available",
               payload.image_url || "",
               payload.hero_image_url || payload.image_url || "",
               payload.tags || [],
@@ -777,7 +712,7 @@ function createDbStore(memoryStore) {
         async () =>
           (
             await db.query("SELECT * FROM ticket_options WHERE event_id = $1 ORDER BY sort_order ASC", [eventId])
-          ).rows,
+          ).rows.map(normalizeTicketOption),
         () => memoryStore.listTicketOptions(eventId)
       ),
     replaceTicketOptions: (eventId, options) =>
@@ -788,14 +723,16 @@ function createDbStore(memoryStore) {
           for (const [index, option] of options.entries()) {
             if (!option.name) continue;
             await db.query(
-              `INSERT INTO ticket_options (event_id, name, price_label, description, availability_label, sort_order)
-               VALUES ($1, $2, $3, $4, $5, $6)`,
+              `INSERT INTO ticket_options
+                (event_id, name, price_label, price_usd_cents, description, availability_label, sort_order)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
               [
                 eventId,
                 option.name,
-                option.price_label || "",
+                `$${(Number(option.price_usd_cents) / 100).toLocaleString("en-US")}`,
+                Number(option.price_usd_cents),
                 option.description || "",
-                option.availability_label || "Request only",
+                option.availability_label || "Available",
                 index + 1
               ]
             );
@@ -804,87 +741,19 @@ function createDbStore(memoryStore) {
         () => memoryStore.replaceTicketOptions(eventId, options)
       ),
 
-    createBookingRequest: (payload) =>
-      fallback(
-        "createBookingRequest",
-        async () => {
-          const event = await store.getEventById(payload.event_id);
-          const ticketOptions = await store.listTicketOptions(payload.event_id);
-          const ticketOption = ticketOptions.find((item) => Number(item.id) === Number(payload.ticket_option_id));
-          const requestCode = buildRequestCode();
-          const booking = {
-            quantity: Number(payload.quantity || 1),
-            customer_name: payload.customer_name,
-            customer_phone: payload.customer_phone,
-            customer_email: payload.customer_email || "",
-            note: payload.note || ""
-          };
-          const message = buildWhatsAppMessage({ requestCode, event, ticketOption, booking });
-          const result = await db.query(
-            `INSERT INTO booking_requests
-              (request_code, event_id, ticket_option_id, quantity, customer_name, customer_phone, customer_email,
-               note, whatsapp_message, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'new')
-             RETURNING *`,
-            [
-              requestCode,
-              Number(payload.event_id),
-              payload.ticket_option_id ? Number(payload.ticket_option_id) : null,
-              booking.quantity,
-              booking.customer_name,
-              booking.customer_phone,
-              booking.customer_email,
-              booking.note,
-              message
-            ]
-          );
-          return { ...result.rows[0], whatsapp_url: whatsappUrl(message) };
-        },
-        () => memoryStore.createBookingRequest(payload)
-      ),
-    listBookingRequests: () =>
-      fallback(
-        "listBookingRequests",
-        async () =>
-          (
-            await db.query(
-              `SELECT br.*, e.title AS event_title, t.name AS ticket_name
-               FROM booking_requests br
-               LEFT JOIN events e ON e.id = br.event_id
-               LEFT JOIN ticket_options t ON t.id = br.ticket_option_id
-               ORDER BY br.created_at DESC`
-            )
-          ).rows,
-        memoryStore.listBookingRequests
-      ),
-    updateBookingStatus: (id, status) =>
-      fallback(
-        "updateBookingStatus",
-        async () =>
-          (
-            await db.query(
-              "UPDATE booking_requests SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
-              [status, id]
-            )
-          ).rows[0],
-        () => memoryStore.updateBookingStatus(id, status)
-      ),
-
     getStats: () =>
       fallback(
         "getStats",
         async () => {
-          const [events, categories, venues, requests] = await Promise.all([
+          const [events, categories, venues] = await Promise.all([
             db.query("SELECT COUNT(*)::int AS count FROM events"),
             db.query("SELECT COUNT(*)::int AS count FROM categories"),
-            db.query("SELECT COUNT(*)::int AS count FROM venues"),
-            db.query("SELECT COUNT(*)::int AS count FROM booking_requests")
+            db.query("SELECT COUNT(*)::int AS count FROM venues")
           ]);
           return {
             events: events.rows[0].count,
             categories: categories.rows[0].count,
-            venues: venues.rows[0].count,
-            requests: requests.rows[0].count
+            venues: venues.rows[0].count
           };
         },
         memoryStore.getStats

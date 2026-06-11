@@ -13,15 +13,26 @@ import methodOverride from "method-override";
 import { isProduction, readBool, validateConfig } from "./config.js";
 import { getPool, isConfigured as isDatabaseConfigured, query } from "./db.js";
 import { csrfProtection } from "./middleware/security.js";
+import createCommerceStore from "./commerce-store.js";
 import createStore from "./store.js";
 import publicRoutes from "./routes/public.js";
 import adminRoutes from "./routes/admin.js";
+import { createEmailService } from "./services/email.js";
+import { createPaystackService } from "./services/paystack.js";
+import { startSchedulers } from "./services/scheduler.js";
+import { createTicketmasterService } from "./services/ticketmaster.js";
 import viewHelpers from "./utils/view-helpers.js";
 
+const port = Number(process.env.PORT || 3000);
+process.env.APP_URL ||= `http://localhost:${port}`;
 validateConfig();
 
 const app = express();
 const store = createStore();
+const commerceStore = createCommerceStore();
+const ticketmaster = createTicketmasterService({ store: commerceStore });
+const paystack = createPaystackService();
+const emailService = createEmailService({ commerceStore });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PgSession = connectPgSimple(session);
@@ -42,7 +53,7 @@ app.use(
         baseUri: ["'self'"],
         connectSrc: ["'self'"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        formAction: ["'self'", "https://wa.me"],
+        formAction: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
         objectSrc: ["'none'"],
         scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "https://code.jquery.com", "https://unpkg.com"],
@@ -54,7 +65,13 @@ app.use(
 );
 app.use(morgan(isProduction ? "combined" : "dev"));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buffer) => {
+      if (req.path === "/webhooks/paystack") req.rawBody = Buffer.from(buffer);
+    }
+  })
+);
 app.use(methodOverride("_method"));
 app.use(
   express.static(path.join(__dirname, "..", "public"), {
@@ -121,8 +138,8 @@ app.get("/healthz", async (req, res, next) => {
   }
 });
 
-app.use("/", publicRoutes(store));
-app.use("/admin", adminRoutes(store));
+app.use("/", publicRoutes({ store, commerceStore, ticketmaster, paystack, emailService }));
+app.use("/admin", adminRoutes({ store, commerceStore, emailService }));
 
 app.use((req, res) => {
   res.status(404).render("not-found", {
@@ -138,7 +155,8 @@ app.use((error, req, res, next) => {
 
   res.status(error.status || 500).render("error", {
     title: "Something went wrong",
-    message: isProduction ? "The page could not be loaded." : error.message || "The page could not be loaded.",
+    message:
+      isProduction && !error.expose ? "The page could not be loaded." : error.message || "The page could not be loaded.",
     layout: "layouts/main",
     currentPath: req.path,
     admin: req.session?.admin || null,
@@ -150,9 +168,8 @@ app.use((error, req, res, next) => {
   });
 });
 
-const port = Number(process.env.PORT || 3000);
-
 app.listen(port, () => {
   const mode = store.isDatabaseConfigured() ? "Neon/Postgres" : "seeded local data";
   console.log(`LuminTix running at http://localhost:${port} using ${mode}.`);
+  if (isDatabaseConfigured()) startSchedulers({ commerceStore, emailService });
 });

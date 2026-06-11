@@ -28,8 +28,8 @@
         </div>
 
         <div class="detail-panel" data-aos="fade-up">
-          <h2>Ticket preferences</h2>
-          <p class="muted-copy">Exact stock is handled by the admin team. Choose a preference and open a request conversation on WhatsApp.</p>
+          <h2>Ticket types</h2>
+          <p class="muted-copy">Choose your experience. Each purchased ticket receives a separate PDF and unique QR code.</p>
           <div class="ticket-list">
             <% ticketOptions.forEach((ticket) => { %>
               <div class="ticket-row">
@@ -43,9 +43,9 @@
                   <% if (['sold_out', 'cancelled'].includes(event.availability_status) || event.status === 'cancelled') { %>
                     <button class="btn btn-secondary" disabled>Unavailable</button>
                   <% } else { %>
-                    <a class="btn btn-accent" href="/request/<%= event.id %>?ticket=<%= ticket.id %>">
-                      <i data-lucide="message-circle"></i>
-                      <span>Request</span>
+                    <a class="btn btn-accent" href="/checkout/local/<%= event.id %>?ticket=<%= ticket.id %>">
+                      <i data-lucide="credit-card"></i>
+                      <span>Buy</span>
                     </a>
                   <% } %>
                 </div>
@@ -62,9 +62,9 @@
             <p><i data-lucide="calendar"></i><%= helpers.formatDateTime(event.starts_at) %></p>
             <p><i data-lucide="map-pin"></i><%= event.venue_name %>, <%= event.city %></p>
             <p><i data-lucide="ticket"></i><%= helpers.statusLabel(event.availability_status) %></p>
-            <a class="btn btn-dark w-100" href="/request/<%= event.id %>">
-              <i data-lucide="send"></i>
-              <span>Request tickets</span>
+            <a class="btn btn-dark w-100" href="/checkout/local/<%= event.id %>">
+              <i data-lucide="ticket-check"></i>
+              <span>Buy tickets</span>
             </a>
           </div>
         </div>

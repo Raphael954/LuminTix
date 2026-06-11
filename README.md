@@ -1,64 +1,65 @@
 # LuminTix
 
-LuminTix is a modern entertainment discovery and WhatsApp booking platform for music, movies, sports, concerts, and nightlife.
+LuminTix is an entertainment discovery, USD card-payment, and digital-ticket platform built with Express, EJS, Neon Postgres, Ticketmaster Discovery, Paystack, and Resend.
 
-## Features
+## What It Does
 
-- Public discovery pages, category browsing, search, event details, venue pages, and responsive Bootstrap UI.
-- Request-only ticket flow that saves booking requests and opens WhatsApp with customer/event details pre-filled.
-- Admin dashboard for events, categories, venues, ticket preferences, and request statuses.
-- Neon Postgres support with seeded local fallback for development.
-- Optional Ticketmaster Discovery API integration for partner event discovery.
-- Production hardening: Helmet CSP, CSRF protection, rate limits, secure session options, health endpoint, and Postgres-backed sessions.
+- Lists local and Ticketmaster-discovered events on internal LuminTix pages.
+- Assigns Ticketmaster events a stable LuminTix tier and USD price for two UTC calendar days.
+- Calculates every order server-side and redirects customers to Paystack USD card checkout.
+- Verifies Paystack callbacks and signed webhooks before issuing tickets.
+- Generates one QR-coded PDF per purchased quantity and packages them in a ZIP.
+- Provides an immediate secure download and sends a recovery copy through Resend.
+- Lets public QR scans consume a ticket once; repeat scans show it as already used.
+- Gives admins event, order, payment, email, ticket, and check-in visibility.
+
+## Required Services
+
+1. Create a Neon Postgres database and copy its connection string to `DATABASE_URL`.
+2. Create a Ticketmaster developer application and copy its Discovery API consumer key to `TICKETMASTER_API_KEY`.
+3. Enable USD card transactions on the Paystack account and copy the secret key to `PAYSTACK_SECRET_KEY`.
+4. Verify a Resend sending domain and configure `RESEND_API_KEY` and `EMAIL_FROM`.
+5. Set `APP_URL` to the public HTTPS origin in production.
+
+Paystack must support USD on the configured account. LuminTix never silently converts USD to another currency.
 
 ## Setup
 
-1. Install dependencies:
-
 ```powershell
 npm.cmd install
-```
-
-2. Fill in `.env`.
-
-Required for production:
-
-- `NODE_ENV=production`
-- `DATABASE_URL`
-- `SESSION_SECRET` with at least 32 characters
-- `WHATSAPP_PHONE`
-- `ADMIN_NAME`
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
-
-3. Prepare the database:
-
-```powershell
 npm.cmd run db:setup
-```
-
-4. Start the app:
-
-```powershell
+npm.cmd test
 npm.cmd start
 ```
 
-The app runs on `http://localhost:3000` by default.
+Copy `.env.example` values into `.env` and supply the credentials before running checkout. Database setup executes every SQL file in `migrations/` in filename order and normalizes local events to Standard, Standard Plus, Premium, and VIP.
+
+## Production Configuration
+
+Production requires `DATABASE_URL`, `SESSION_SECRET`, `APP_URL`, `TICKETMASTER_API_KEY`, `PAYSTACK_SECRET_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, and non-default admin credentials.
+
+Configure the Paystack webhook URL as:
+
+`https://your-domain.example/webhooks/paystack`
+
+## Pricing and Cleanup
+
+Ticketmaster prices are never used. Each discovered event receives one of:
+
+- Standard: `$500`
+- Standard Plus: `$1,000`
+- Premium: `$1,500`
+- VIP: `$2,000`
+
+Assignments are authoritative in Neon. Expired assignments are rejected during lookup and an application scheduler removes them at `00:00 UTC`, protected by a Postgres advisory lock.
 
 ## Useful Commands
 
 ```powershell
 npm.cmd run check
+npm.cmd test
 npm.cmd run dev
 npm.cmd run db:setup
 ```
 
-## Health Check
-
-`GET /healthz` returns app and database status.
-
-## Notes
-
-- `.env` is intentionally ignored by Git.
-- In development, the app can run without `DATABASE_URL` using seeded local data.
-- In production, the app requires `DATABASE_URL`, `SESSION_SECRET`, and `WHATSAPP_PHONE`.
+`GET /healthz` reports application and database health.

@@ -26,8 +26,14 @@ async function main() {
     throw new Error("DATABASE_URL is required. Add it to .env, then run npm run db:setup.");
   }
 
-  const schema = fs.readFileSync(path.join(__dirname, "..", "migrations", "001_init.sql"), "utf8");
-  await pool.query(schema);
+  const migrationsDir = path.join(__dirname, "..", "migrations");
+  const migrationFiles = fs
+    .readdirSync(migrationsDir)
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+  for (const migrationFile of migrationFiles) {
+    await pool.query(fs.readFileSync(path.join(migrationsDir, migrationFile), "utf8"));
+  }
 
   const adminName = process.env.ADMIN_NAME || "Site Admin";
   const adminEmail = process.env.ADMIN_EMAIL || "admin@lumin.local";
@@ -136,22 +142,20 @@ async function main() {
     );
   }
 
+  await pool.query("DELETE FROM ticket_options WHERE event_id = ANY($1::int[])", [
+    seed.events.map((event) => event.id)
+  ]);
+
   for (const ticket of seed.ticketOptions) {
     await pool.query(
-      `INSERT INTO ticket_options (id, event_id, name, price_label, description, availability_label, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (id) DO UPDATE
-       SET event_id = EXCLUDED.event_id,
-           name = EXCLUDED.name,
-           price_label = EXCLUDED.price_label,
-           description = EXCLUDED.description,
-           availability_label = EXCLUDED.availability_label,
-           sort_order = EXCLUDED.sort_order`,
+      `INSERT INTO ticket_options
+        (event_id, name, price_label, price_usd_cents, description, availability_label, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
-        ticket.id,
         ticket.event_id,
         ticket.name,
         ticket.price_label,
+        ticket.price_usd_cents,
         ticket.description,
         ticket.availability_label,
         ticket.sort_order

@@ -1,0 +1,19 @@
+Failed to prune sessions: Error: getaddrinfo ENOTFOUND ep-withered-base-abq4d6az-pooler.eu-west-2.aws.neon.tech
+    at C:\Users\user\Documents\Ticket Master Clone\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async PGStore._asyncQuery (C:\Users\user\Documents\Ticket Master Clone\node_modules\connect-pg-simple\index.js:322:21) {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'ep-withered-base-abq4d6az-pooler.eu-west-2.aws.neon.tech'
+}
+[cleanup] getaddrinfo ENOTFOUND ep-withered-base-abq4d6az-pooler.eu-west-2.aws.neon.tech
+Failed to prune sessions: Error: getaddrinfo ENOTFOUND ep-withered-base-abq4d6az-pooler.eu-west-2.aws.neon.tech
+    at C:\Users\user\Documents\Ticket Master Clone\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async PGStore._asyncQuery (C:\Users\user\Documents\Ticket Master Clone\node_modules\connect-pg-simple\index.js:322:21) {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'ep-withered-base-abq4d6az-pooler.eu-west-2.aws.neon.tech'
+}
