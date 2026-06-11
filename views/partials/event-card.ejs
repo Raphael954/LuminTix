@@ -1,7 +1,8 @@
 <article class="event-card" data-aos="fade-up">
-  <a class="event-card-image" href="<%= event.source === 'ticketmaster' ? event.external_url : `/events/${event.slug}` %>" <%= event.source === 'ticketmaster' ? 'target="_blank" rel="noreferrer"' : '' %>>
+  <% const eventHref = event.source === 'ticketmaster' ? `/events/ticketmaster/${event.external_event_id}` : `/events/${event.slug}`; %>
+  <a class="event-card-image" href="<%= eventHref %>">
     <img src="<%= event.image_url || event.hero_image_url || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=900&q=80' %>" alt="<%= event.title %>">
-    <span class="event-source"><%= event.source === 'ticketmaster' ? 'Partner' : (event.category_name || event.category?.name || 'Event') %></span>
+    <span class="event-source"><%= event.source === 'ticketmaster' ? 'Ticketmaster discovery' : (event.category_name || event.category?.name || 'Event') %></span>
   </a>
   <div class="event-card-body">
     <div class="event-date-chip">
@@ -9,7 +10,7 @@
       <strong><%= helpers.formatDay(event.starts_at) %></strong>
     </div>
     <div class="event-card-copy">
-      <h2><a href="<%= event.source === 'ticketmaster' ? event.external_url : `/events/${event.slug}` %>" <%= event.source === 'ticketmaster' ? 'target="_blank" rel="noreferrer"' : '' %>><%= event.title %></a></h2>
+      <h2><a href="<%= eventHref %>"><%= event.title %></a></h2>
       <p><%= helpers.shortText(event.summary || event.description, 118) %></p>
       <div class="event-meta">
         <span><i data-lucide="map-pin"></i><%= event.venue_name || event.venue?.name || 'Partner venue' %></span>
@@ -20,11 +21,11 @@
     </div>
   </div>
   <div class="event-card-footer">
-    <span class="status-pill status-<%= event.availability_status || 'request_only' %>"><%= helpers.statusLabel(event.availability_status || 'request_only') %></span>
+    <span class="price-pill"><%= event.price_label || 'Pricing unavailable' %></span>
     <% if (event.source === 'ticketmaster') { %>
-      <a class="btn btn-sm btn-outline-dark" href="<%= event.external_url %>" target="_blank" rel="noreferrer">
-        <i data-lucide="external-link"></i>
-        <span>View</span>
+      <a class="btn btn-sm btn-outline-dark" href="<%= eventHref %>">
+        <i data-lucide="ticket"></i>
+        <span>Details</span>
       </a>
     <% } else { %>
       <a class="btn btn-sm btn-dark" href="/events/<%= event.slug %>">

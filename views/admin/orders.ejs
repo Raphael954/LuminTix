@@ -1,0 +1,39 @@
+<section class="admin-shell">
+  <div class="container">
+    <div class="admin-topbar">
+      <div><span class="eyebrow">Commerce</span><h1>Orders, payments, and tickets</h1></div>
+      <a class="btn btn-outline-dark" href="/admin"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+    </div>
+    <nav class="admin-tabs">
+      <a href="/admin">Overview</a><a href="/admin/events">Events</a><a href="/admin/categories">Categories</a>
+      <a href="/admin/venues">Venues</a><a class="active" href="/admin/orders">Orders</a>
+    </nav>
+    <div class="admin-table-wrap">
+      <table class="table admin-table align-middle">
+        <thead><tr><th>Order</th><th>Customer</th><th>Tickets</th><th>Payment</th><th>Email</th><th></th></tr></thead>
+        <tbody>
+          <% orders.forEach((order) => { %>
+            <tr>
+              <td><strong><%= order.order_code %></strong><small><%= order.event_snapshot.title %></small></td>
+              <td><%= order.customer_name %><small><%= order.customer_email %></small></td>
+              <td>
+                <%= order.ticket_type %> × <%= order.quantity %><small><%= order.used_ticket_count %> of <%= order.ticket_count %> used</small>
+                <% order.tickets.forEach((ticket) => { %><small><%= ticket.ticket_code %> · <%= helpers.statusLabel(ticket.status) %></small><% }) %>
+              </td>
+              <td><span class="status-pill status-<%= order.status %>"><%= helpers.statusLabel(order.status) %></span><small><%= helpers.formatUsd(order.amount_usd_cents) %></small></td>
+              <td><%= order.email_status || 'Pending' %><small><%= order.email_attempts || 0 %> attempt(s)</small></td>
+              <td>
+                <% if (order.status === 'paid') { %>
+                  <form method="post" action="/admin/orders/<%= order.id %>/resend">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn btn-sm btn-outline-dark" type="submit"><i data-lucide="send"></i><span>Resend</span></button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

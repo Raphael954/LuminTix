@@ -31,6 +31,12 @@ function formatDateTime(value) {
   return `${formatDate(value)} at ${formatTime(value)}`;
 }
 
+function formatUsd(cents) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(
+    Number(cents || 0) / 100
+  );
+}
+
 function dateInputValue(value) {
   if (!value) return "";
   const date = new Date(value);
@@ -54,11 +60,16 @@ function statusLabel(value) {
     cancelled: "Cancelled",
     available: "Available",
     limited: "Limited",
-    request_only: "Request Only",
     new: "New",
     contacted: "Contacted",
     confirmed: "Confirmed",
-    closed: "Closed"
+    closed: "Closed",
+    pending: "Pending",
+    processing: "Processing",
+    paid: "Paid",
+    failed: "Failed",
+    valid: "Valid",
+    used: "Used"
   };
 
   return labels[value] || value;
@@ -76,6 +87,7 @@ export default {
   formatDay,
   formatTime,
   formatDateTime,
+  formatUsd,
   dateInputValue,
   shortText,
   statusLabel,

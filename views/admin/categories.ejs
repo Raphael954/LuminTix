@@ -12,7 +12,7 @@
       <a href="/admin/events">Events</a>
       <a class="active" href="/admin/categories">Categories</a>
       <a href="/admin/venues">Venues</a>
-      <a href="/admin/requests">Requests</a>
+      <a href="/admin/orders">Orders</a>
     </div>
 
     <div class="row g-4">
@@ -28,7 +28,7 @@
             <label class="form-label" for="description">Description</label>
             <textarea class="form-control mb-3" id="description" name="description" rows="3"><%= category.description || '' %></textarea>
             <label class="form-label" for="accent_color">Accent color</label>
-            <input class="form-control form-control-color mb-3" id="accent_color" name="accent_color" type="color" value="<%= category.accent_color || '#0db39e' %>">
+            <input class="form-control form-control-color mb-3" id="accent_color" name="accent_color" type="color" value="<%= category.accent_color || '#7928f5' %>">
             <label class="form-label" for="icon">Lucide icon</label>
             <input class="form-control mb-3" id="icon" name="icon" value="<%= category.icon || 'ticket' %>">
             <label class="form-label" for="image_url">Image URL</label>

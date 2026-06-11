@@ -1,0 +1,56 @@
+<section class="event-hero" style="--hero-image: url('<%= event.hero_image_url || event.image_url %>')">
+  <div class="container">
+    <div class="event-hero-content" data-aos="fade-up">
+      <span class="crumb"><i data-lucide="sparkles"></i>Ticketmaster discovery</span>
+      <h1><%= event.title %></h1>
+      <div class="event-hero-meta">
+        <span><i data-lucide="calendar"></i><%= helpers.formatDateTime(event.starts_at) %></span>
+        <span><i data-lucide="map-pin"></i><%= event.venue_name %>, <%= event.city %></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-band light event-detail-section">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="detail-panel">
+          <div class="detail-panel-heading">
+            <span class="status-pill status-available">Available</span>
+            <span class="soft-tag"><%= event.category_name %></span>
+          </div>
+          <h2>About this event</h2>
+          <p class="lead"><%= event.summary %></p>
+          <p><%= event.description %></p>
+        </div>
+        <div class="detail-panel ticket-feature">
+          <div>
+            <span class="eyebrow">Assigned LuminTix tier</span>
+            <h2><%= event.ticket_type %></h2>
+            <p>One stable price is assigned to this event for two UTC calendar days.</p>
+          </div>
+          <div class="ticket-feature-action">
+            <strong><%= event.price_label %></strong>
+            <a class="btn btn-accent" href="/checkout/ticketmaster/<%= event.external_event_id %>">
+              <i data-lucide="credit-card"></i>
+              <span>Buy tickets</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      <aside class="col-lg-4">
+        <div class="sticky-summary">
+          <img src="<%= event.image_url || event.hero_image_url %>" alt="<%= event.title %>">
+          <div class="summary-body">
+            <h2>Event summary</h2>
+            <p><i data-lucide="ticket"></i><%= event.ticket_type %> · <%= event.price_label %></p>
+            <p><i data-lucide="calendar"></i><%= helpers.formatDateTime(event.starts_at) %></p>
+            <p><i data-lucide="map-pin"></i><%= event.venue_name %>, <%= event.city %></p>
+            <a class="btn btn-dark w-100" href="/checkout/ticketmaster/<%= event.external_event_id %>">Checkout</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>

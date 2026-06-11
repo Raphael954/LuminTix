@@ -1,0 +1,14 @@
+<section class="checkin-stage <%= result.newly_used ? 'checkin-valid' : 'checkin-used' %>">
+  <div class="checkin-panel">
+    <span class="checkin-icon"><i data-lucide="<%= result.newly_used ? 'badge-check' : 'circle-alert' %>"></i></span>
+    <span class="eyebrow"><%= result.newly_used ? 'Admission approved' : 'Duplicate scan' %></span>
+    <h1><%= result.newly_used ? 'Ticket checked in' : 'Ticket already used' %></h1>
+    <p><strong><%= result.event_snapshot.title %></strong></p>
+    <dl>
+      <div><dt>Ticket ID</dt><dd><%= result.scanned_ticket.ticket_code %></dd></div>
+      <div><dt>Ticket type</dt><dd><%= result.ticket_type %></dd></div>
+      <div><dt>Guest</dt><dd><%= result.customer_name %></dd></div>
+      <div><dt>Status</dt><dd><%= result.scanned_ticket.status %></dd></div>
+    </dl>
+  </div>
+</section>

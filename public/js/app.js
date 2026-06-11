@@ -24,4 +24,22 @@ $(function () {
       form.trigger("submit");
     }
   });
+
+  const checkoutForm = $("[data-checkout-form]");
+  function updateCheckoutTotal() {
+    if (!checkoutForm.length) return;
+    const total = checkoutForm.find("[data-checkout-total]");
+    const selected = checkoutForm.find("[data-ticket-option] option:selected");
+    const cents = Number(selected.data("price") || total.data("external-price") || 0);
+    const quantity = Math.max(1, Number(checkoutForm.find("[data-quantity]").val()) || 1);
+    total.text(
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0
+      }).format((cents * quantity) / 100)
+    );
+  }
+  checkoutForm.on("input change", "[data-ticket-option], [data-quantity]", updateCheckoutTotal);
+  updateCheckoutTotal();
 });

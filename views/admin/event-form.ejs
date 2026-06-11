@@ -58,8 +58,8 @@
           <div class="col-md-6">
             <label class="form-label" for="availability_status">Availability</label>
             <select class="form-select" id="availability_status" name="availability_status">
-              <% ['request_only', 'available', 'limited', 'sold_out'].forEach((status) => { %>
-                <option value="<%= status %>" <%= (event.availability_status || 'request_only') === status ? 'selected' : '' %>><%= helpers.statusLabel(status) %></option>
+              <% ['available', 'limited', 'sold_out'].forEach((status) => { %>
+                <option value="<%= status %>" <%= (event.availability_status || 'available') === status ? 'selected' : '' %>><%= helpers.statusLabel(status) %></option>
               <% }) %>
             </select>
           </div>
@@ -89,7 +89,7 @@
           </div>
           <div class="col-12">
             <label class="form-label" for="ticket_options">Ticket options</label>
-            <textarea class="form-control monospace-field" id="ticket_options" name="ticket_options" rows="5" placeholder="Regular Access | From NGN 20,000 | Entry access | Request only"><%= ticketOptionsText %></textarea>
+            <textarea class="form-control monospace-field" id="ticket_options" name="ticket_options" rows="5" placeholder="Standard | 500 | General admission access | Available"><%= ticketOptionsText %></textarea>
           </div>
           <div class="col-12">
             <div class="form-check">
