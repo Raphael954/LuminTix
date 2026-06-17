@@ -384,7 +384,7 @@ function createDbStore(memoryStore) {
     }
   }
 
-  async function dbUniqueSlug(table, baseSlug, currentId) {
+  async function dbUniqueSlug(table, baseSlug, currentId, executor = db) {
     let slug = baseSlug || "item";
     let index = 2;
 
@@ -396,10 +396,46 @@ function createDbStore(memoryStore) {
         sql += ` AND id <> $2`;
       }
 
-      const result = await db.query(sql, params);
+      const result = await executor.query(sql, params);
       if (!result.rows.length) return slug;
       slug = `${baseSlug}-${index}`;
       index += 1;
+    }
+  }
+
+  async function withTransaction(operation) {
+    const client = await db.getPool().connect();
+    try {
+      await client.query("BEGIN");
+      const result = await operation(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async function replaceDbTicketOptions(eventId, options, executor = db) {
+    await executor.query("DELETE FROM ticket_options WHERE event_id = $1", [eventId]);
+    for (const [index, option] of options.entries()) {
+      if (!option.name) continue;
+      await executor.query(
+        `INSERT INTO ticket_options
+          (event_id, name, price_label, price_usd_cents, description, availability_label, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          eventId,
+          option.name,
+          `$${(Number(option.price_usd_cents) / 100).toLocaleString("en-US")}`,
+          Number(option.price_usd_cents),
+          option.description || "",
+          option.availability_label || "Available",
+          index + 1
+        ]
+      );
     }
   }
 
@@ -648,33 +684,36 @@ function createDbStore(memoryStore) {
       fallback(
         "createEvent",
         async () => {
-          const slug = await dbUniqueSlug("events", makeSlug(payload.slug || payload.title));
-          const result = await db.query(
-            `INSERT INTO events
-              (title, slug, summary, description, category_id, venue_id, starts_at, ends_at, status,
-               availability_status, image_url, hero_image_url, tags, is_featured, external_url, source)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::timestamptz, $9, $10, $11, $12, $13, $14, $15, 'local')
-             RETURNING *`,
-            [
-              payload.title,
-              slug,
-              payload.summary || "",
-              payload.description || "",
-              Number(payload.category_id),
-              Number(payload.venue_id),
-              payload.starts_at,
-              payload.ends_at || "",
-              payload.status || "published",
-              payload.availability_status || "available",
-              payload.image_url || "",
-              payload.hero_image_url || payload.image_url || "",
-              payload.tags || [],
-              Boolean(payload.is_featured),
-              payload.external_url || ""
-            ]
-          );
-          await store.replaceTicketOptions(result.rows[0].id, payload.ticket_options || []);
-          return store.getEventById(result.rows[0].id);
+          const eventId = await withTransaction(async (client) => {
+            const slug = await dbUniqueSlug("events", makeSlug(payload.slug || payload.title), null, client);
+            const result = await client.query(
+              `INSERT INTO events
+                (title, slug, summary, description, category_id, venue_id, starts_at, ends_at, status,
+                 availability_status, image_url, hero_image_url, tags, is_featured, external_url, source)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::timestamptz, $9, $10, $11, $12, $13, $14, $15, 'local')
+               RETURNING *`,
+              [
+                payload.title,
+                slug,
+                payload.summary || "",
+                payload.description || "",
+                Number(payload.category_id),
+                Number(payload.venue_id),
+                payload.starts_at,
+                payload.ends_at || "",
+                payload.status || "published",
+                payload.availability_status || "available",
+                payload.image_url || "",
+                payload.hero_image_url || payload.image_url || "",
+                payload.tags || [],
+                Boolean(payload.is_featured),
+                payload.external_url || ""
+              ]
+            );
+            await replaceDbTicketOptions(result.rows[0].id, payload.ticket_options || [], client);
+            return result.rows[0].id;
+          });
+          return store.getEventById(eventId);
         },
         () => memoryStore.createEvent(payload)
       ),
@@ -682,36 +721,40 @@ function createDbStore(memoryStore) {
       fallback(
         "updateEvent",
         async () => {
-          const slug = await dbUniqueSlug("events", makeSlug(payload.slug || payload.title), id);
-          const result = await db.query(
-            `UPDATE events
-             SET title = $1, slug = $2, summary = $3, description = $4, category_id = $5, venue_id = $6,
-                 starts_at = $7, ends_at = NULLIF($8, '')::timestamptz, status = $9, availability_status = $10,
-                 image_url = $11, hero_image_url = $12, tags = $13, is_featured = $14, external_url = $15,
-                 updated_at = NOW()
-             WHERE id = $16
-             RETURNING *`,
-            [
-              payload.title,
-              slug,
-              payload.summary || "",
-              payload.description || "",
-              Number(payload.category_id),
-              Number(payload.venue_id),
-              payload.starts_at,
-              payload.ends_at || "",
-              payload.status || "published",
-              payload.availability_status || "available",
-              payload.image_url || "",
-              payload.hero_image_url || payload.image_url || "",
-              payload.tags || [],
-              Boolean(payload.is_featured),
-              payload.external_url || "",
-              id
-            ]
-          );
-          await store.replaceTicketOptions(id, payload.ticket_options || []);
-          return store.getEventById(id);
+          const eventId = await withTransaction(async (client) => {
+            const slug = await dbUniqueSlug("events", makeSlug(payload.slug || payload.title), id, client);
+            const result = await client.query(
+              `UPDATE events
+               SET title = $1, slug = $2, summary = $3, description = $4, category_id = $5, venue_id = $6,
+                   starts_at = $7, ends_at = NULLIF($8, '')::timestamptz, status = $9, availability_status = $10,
+                   image_url = $11, hero_image_url = $12, tags = $13, is_featured = $14, external_url = $15,
+                   updated_at = NOW()
+               WHERE id = $16
+               RETURNING *`,
+              [
+                payload.title,
+                slug,
+                payload.summary || "",
+                payload.description || "",
+                Number(payload.category_id),
+                Number(payload.venue_id),
+                payload.starts_at,
+                payload.ends_at || "",
+                payload.status || "published",
+                payload.availability_status || "available",
+                payload.image_url || "",
+                payload.hero_image_url || payload.image_url || "",
+                payload.tags || [],
+                Boolean(payload.is_featured),
+                payload.external_url || "",
+                id
+              ]
+            );
+            if (!result.rows[0]) return null;
+            await replaceDbTicketOptions(id, payload.ticket_options || [], client);
+            return id;
+          });
+          return eventId ? store.getEventById(eventId) : null;
         },
         () => memoryStore.updateEvent(id, payload)
       ),
@@ -734,24 +777,7 @@ function createDbStore(memoryStore) {
       fallback(
         "replaceTicketOptions",
         async () => {
-          await db.query("DELETE FROM ticket_options WHERE event_id = $1", [eventId]);
-          for (const [index, option] of options.entries()) {
-            if (!option.name) continue;
-            await db.query(
-              `INSERT INTO ticket_options
-                (event_id, name, price_label, price_usd_cents, description, availability_label, sort_order)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-              [
-                eventId,
-                option.name,
-                `$${(Number(option.price_usd_cents) / 100).toLocaleString("en-US")}`,
-                Number(option.price_usd_cents),
-                option.description || "",
-                option.availability_label || "Available",
-                index + 1
-              ]
-            );
-          }
+          await replaceDbTicketOptions(eventId, options);
         },
         () => memoryStore.replaceTicketOptions(eventId, options)
       ),
